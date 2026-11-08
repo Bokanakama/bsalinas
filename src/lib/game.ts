@@ -97,7 +97,7 @@ export const BOARD: Square[] = [
 
 /** Sorte ou Revés cards: positive = bank pays player, negative = player pays bank. */
 export interface LuckCard { text: string; amount: number; freeJail?: boolean; goto?: number; jail?: boolean; each?: number; perHouse?: number }
-export const LUCK_CARDS: LuckCard[
+export const LUCK_CARDS: LuckCard[] = [
   { text: "A maré subiu e pegou seu carro no Atalaia: pague o reboque do trator", amount: -120 },
   { text: "Vendeu caranguejada e camarão rosa na barraca da praia", amount: 100 },
   { text: "Tarde de paz no Lago da Coca-Cola", amount: 50 },
