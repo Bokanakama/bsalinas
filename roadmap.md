@@ -1,0 +1,4 @@
+- [x] Mostrar bônus vigente do Início e limitar notícias a dois minutos.
+- [x] Narrar recebimento do cartão Saia Livre.
+- [x] Separar avatares dos donos de nomes e aluguéis, sem fundo colorido.
+- [x] Verificar regras e telas (33 testes; TV e abertura mobile; áudio não ouvido).
