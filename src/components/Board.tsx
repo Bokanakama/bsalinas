@@ -39,7 +39,7 @@ const KIND_TONE: Record<string, string> = { toll: "text-foreground", fine: "text
 const CORNER: Record<number, { icon: IconName; title: string; tag: string; tone: string }> = {
   0: { icon: "start", title: "Início", tag: "+B$ 200", tone: "bg-secondary text-secondary-foreground" },
   17: { icon: "jail", title: "Delegacia", tag: "Só visitando", tone: "bg-muted text-foreground" },
-  28: { icon: "rest", title: "Folga na Rede", tag: "Descanso", tone: "bg-success text-success-foreground" },
+  28: { icon: "rest", title: "Sombra de Coqueiro", tag: "Descanso", tone: "bg-success text-success-foreground" },
   45: { icon: "gojail", title: "Vá para a Delegacia", tag: "Mandado", tone: "bg-destructive text-destructive-foreground" },
 };
 const ICON_BY_GROUP: Record<number, IconName> = { 8: "bus", 9: "bolt" };
