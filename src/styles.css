@@ -67,38 +67,38 @@
 
 :root {
   --radius: 0.75rem;
-  --background: oklch(0.955 0.012 95);
-  --foreground: oklch(0.29 0.045 220);
-  --card: oklch(0.995 0.004 95);
-  --card-foreground: oklch(0.24 0.05 230);
+  --background: oklch(0.96 0.025 85);
+  --foreground: oklch(0.26 0.06 240);
+  --card: oklch(0.99 0.01 85);
+  --card-foreground: oklch(0.24 0.06 240);
   --popover: oklch(0.985 0.015 85);
   --popover-foreground: oklch(0.24 0.05 230);
-  --primary: oklch(0.64 0.17 25);
+  --primary: oklch(0.58 0.13 215);
   --primary-foreground: oklch(0.98 0.02 85);
-  --secondary: oklch(0.85 0.14 90);
+  --secondary: oklch(0.84 0.15 80);
   --secondary-foreground: oklch(0.24 0.05 230);
-  --muted: oklch(0.93 0.015 200);
+  --muted: oklch(0.93 0.03 200);
   --muted-foreground: oklch(0.48 0.04 230);
-  --accent: oklch(0.58 0.11 240);
+  --accent: oklch(0.62 0.19 38);
   --accent-foreground: oklch(0.98 0.02 85);
   --success: oklch(0.6 0.12 160);
   --success-foreground: oklch(0.98 0.02 85);
   --destructive: oklch(0.55 0.21 27);
   --destructive-foreground: oklch(0.98 0.02 85);
-  --border: oklch(0.24 0.05 230);
+  --border: oklch(0.26 0.06 240);
   --input: oklch(0.85 0.02 210);
   --ring: oklch(0.55 0.12 195);
-  --group-0: oklch(0.55 0.18 45);
-  --group-1: oklch(0.68 0.17 215);
-  --group-2: oklch(0.62 0.22 345);
-  --group-3: oklch(0.55 0.15 255);
-  --group-4: oklch(0.58 0.23 25);
-  --group-5: oklch(0.82 0.18 95);
-  --group-6: oklch(0.62 0.18 150);
-  --group-7: oklch(0.48 0.20 295);
+  --group-0: oklch(0.45 0.08 55);
+  --group-1: oklch(0.58 0.15 40);
+  --group-2: oklch(0.6 0.14 150);
+  --group-3: oklch(0.6 0.12 185);
+  --group-4: oklch(0.8 0.16 85);
+  --group-5: oklch(0.58 0.24 350);
+  --group-6: oklch(0.4 0.12 255);
+  --group-7: oklch(0.68 0.13 75);
   --group-8: oklch(0.32 0.02 240);
   --group-9: oklch(0.55 0.03 60);
-  --board-gap: oklch(0.9 0.018 95);
+  --board-gap: oklch(0.88 0.04 200);
   --shadow-soft: 0 1px 2px color-mix(in oklab, var(--foreground) 12%, transparent), 0 6px 18px -8px color-mix(in oklab, var(--foreground) 25%, transparent);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
@@ -129,9 +129,10 @@
 @utility azulejo {
   background-color: var(--background);
   background-image:
-    radial-gradient(120% 60% at 50% -10%, color-mix(in oklab, var(--secondary) 35%, transparent), transparent 60%),
-    repeating-radial-gradient(circle at 0 100%, transparent 0 22px, color-mix(in oklab, var(--accent) 10%, transparent) 22px 30px);
-  background-size: auto, 120px 60px;
+    radial-gradient(60% 45% at 85% -5%, color-mix(in oklab, var(--secondary) 55%, transparent), transparent 70%),
+    radial-gradient(140% 40% at 50% 115%, color-mix(in oklab, var(--primary) 30%, transparent), transparent 70%),
+    repeating-radial-gradient(ellipse at 50% 140%, transparent 0 26px, color-mix(in oklab, var(--primary) 9%, transparent) 26px 30px);
+  background-attachment: fixed;
 }
 @utility nota {
   background-image: repeating-linear-gradient(135deg, color-mix(in oklab, var(--success) 18%, transparent) 0 2px, transparent 2px 8px);
