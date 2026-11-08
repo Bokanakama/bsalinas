@@ -10,18 +10,13 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as CleanupRouteImport } from './routes/cleanup'
 import { Route as JogarCodeRouteImport } from './routes/jogar.$code'
 import { Route as MestreCodeRouteImport } from './routes/mestre.$code'
+import { Route as ApiPublicCleanupRouteImport } from './routes/api/public/cleanup'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CleanupRoute = CleanupRouteImport.update({
-  id: '/cleanup',
-  path: '/cleanup',
   getParentRoute: () => rootRouteImport,
 } as any)
 const JogarCodeRoute = JogarCodeRouteImport.update({
@@ -34,39 +29,45 @@ const MestreCodeRoute = MestreCodeRouteImport.update({
   path: '/mestre/$code',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicCleanupRoute = ApiPublicCleanupRouteImport.update({
+  id: '/api/public/cleanup',
+  path: '/api/public/cleanup',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/cleanup': typeof CleanupRoute
   '/jogar/$code': typeof JogarCodeRoute
   '/mestre/$code': typeof MestreCodeRoute
+  '/api/public/cleanup': typeof ApiPublicCleanupRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/cleanup': typeof CleanupRoute
   '/jogar/$code': typeof JogarCodeRoute
   '/mestre/$code': typeof MestreCodeRoute
+  '/api/public/cleanup': typeof ApiPublicCleanupRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/cleanup': typeof CleanupRoute
   '/jogar/$code': typeof JogarCodeRoute
   '/mestre/$code': typeof MestreCodeRoute
+  '/api/public/cleanup': typeof ApiPublicCleanupRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/cleanup' | '/jogar/$code' | '/mestre/$code'
+  fullPaths: '/' | '/jogar/$code' | '/mestre/$code' | '/api/public/cleanup'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/cleanup' | '/jogar/$code' | '/mestre/$code'
-  id: '__root__' | '/' | '/cleanup' | '/jogar/$code' | '/mestre/$code'
+  to: '/' | '/jogar/$code' | '/mestre/$code' | '/api/public/cleanup'
+  id:
+    '__root__' | '/' | '/jogar/$code' | '/mestre/$code' | '/api/public/cleanup'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  CleanupRoute: typeof CleanupRoute
   JogarCodeRoute: typeof JogarCodeRoute
   MestreCodeRoute: typeof MestreCodeRoute
+  ApiPublicCleanupRoute: typeof ApiPublicCleanupRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -76,13 +77,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/cleanup': {
-      id: '/cleanup'
-      path: '/cleanup'
-      fullPath: '/cleanup'
-      preLoaderRoute: typeof CleanupRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/jogar/$code': {
@@ -99,14 +93,21 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MestreCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/cleanup': {
+      id: '/api/public/cleanup'
+      path: '/api/public/cleanup'
+      fullPath: '/api/public/cleanup'
+      preLoaderRoute: typeof ApiPublicCleanupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  CleanupRoute: CleanupRoute,
   JogarCodeRoute: JogarCodeRoute,
   MestreCodeRoute: MestreCodeRoute,
+  ApiPublicCleanupRoute: ApiPublicCleanupRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
