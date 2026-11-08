@@ -9,19 +9,19 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as CleanupRouteImport } from './routes/cleanup'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CleanupRouteImport } from './routes/cleanup'
 import { Route as JogarCodeRouteImport } from './routes/jogar.$code'
 import { Route as MestreCodeRouteImport } from './routes/mestre.$code'
 
-const CleanupRoute = CleanupRouteImport.update({
-  id: '/cleanup',
-  path: '/cleanup',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CleanupRoute = CleanupRouteImport.update({
+  id: '/cleanup',
+  path: '/cleanup',
   getParentRoute: () => rootRouteImport,
 } as any)
 const JogarCodeRoute = JogarCodeRouteImport.update({
@@ -63,8 +63,8 @@ export interface FileRouteTypes {
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  CleanupRoute: typeof CleanupRoute
   IndexRoute: typeof IndexRoute
+  CleanupRoute: typeof CleanupRoute
   JogarCodeRoute: typeof JogarCodeRoute
   MestreCodeRoute: typeof MestreCodeRoute
 }
@@ -103,8 +103,8 @@ declare module '@tanstack/react-router' {
 }
 
 const rootRouteChildren: RootRouteChildren = {
-  CleanupRoute: CleanupRoute,
   IndexRoute: IndexRoute,
+  CleanupRoute: CleanupRoute,
   JogarCodeRoute: JogarCodeRoute,
   MestreCodeRoute: MestreCodeRoute,
 }
