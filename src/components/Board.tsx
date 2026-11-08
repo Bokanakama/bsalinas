@@ -73,7 +73,7 @@ function Details({ state, i, onClose }: { state: GameState; i: number; onClose: 
             <>
               <Row k="Preço" v={money(sq.price!)} />
               <Row k="Aluguel agora" v={money(rentFor(state, i))} strong />
-              {!util && !station && HOUSE_MULT.slice(1).map((m, k) => <Row key={k} k={k === 3 ? "Com sobrado" : `Com ${k + 1} barraca${k ? "s" : ""}`} v={money((sq.rent ?? 0) * m)} />)}
+              {!util && !station && HOUSE_MULT.slice(1).map((m, k) => <Row key={k} k={k === 3 ? "Com resort" : `Com ${k + 1} chalé${k ? "s" : ""}`} v={money((sq.rent ?? 0) * m)} />)}
               {station && <Row k="Regra" v="Dobra a cada rodoviária" />}
               {util && <Row k="Regra" v="Dados × 4 (×10 com as duas)" />}
               <Row k="Dono" v={owner ? owner.name : "Banco (à venda)"} />

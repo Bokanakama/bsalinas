@@ -8,9 +8,9 @@ import type { Json } from "@/integrations/supabase/types";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Cidade Boró — banco imobiliário no celular" },
+      { title: "Banco Imobiliário Salinas — banco imobiliário no celular" },
       { name: "description", content: "Compre terrenos, cobre aluguel via Pix e jogue com celulares. Um celular ou TV vira o tabuleiro." },
-      { property: "og:title", content: "Cidade Boró" },
+      { property: "og:title", content: "Banco Imobiliário Salinas" },
       { property: "og:description", content: "Banco imobiliário brasileiro: tabuleiro na TV, carteira Pix no celular." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -42,7 +42,7 @@ function Home() {
       <div className="grid w-full max-w-4xl gap-6 md:grid-cols-2">
         <section className="flex flex-col justify-center">
           <p className="font-display text-sm uppercase tracking-widest text-accent">Banco imobiliário brasileiro</p>
-          <h1 className="font-display text-6xl leading-none text-primary md:text-7xl">Cidade<br />Boró</h1>
+          <h1 className="font-display text-6xl leading-none text-primary md:text-7xl">Banco<br />Salinas</h1>
           <p className="mt-4 text-lg leading-relaxed text-foreground">Compre terrenos, cobre aluguel no Pix e cuide dos seus <b>B$ Borós</b>. Um celular ou TV é o tabuleiro; cada celular é uma carteira.</p>
           <ol className="mt-6 space-y-3">
             {[

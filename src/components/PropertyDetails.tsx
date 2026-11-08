@@ -20,7 +20,7 @@ export function PropertyDetails({ state, square, onClose }: { state: GameState; 
             <>
               <Row k="Preço" v={money(sq.price!)} />
               <Row k="Aluguel agora" v={money(rentFor(state, square))} strong />
-              {!station && !util && HOUSE_MULT.slice(1).map((m, k) => <Row key={k} k={k === 3 ? "Com sobrado" : `Com ${k + 1} barraca${k ? "s" : ""}`} v={money((sq.rent ?? 0) * m)} />)}
+              {!station && !util && HOUSE_MULT.slice(1).map((m, k) => <Row key={k} k={k === 3 ? "Com resort" : `Com ${k + 1} chalé${k ? "s" : ""}`} v={money((sq.rent ?? 0) * m)} />)}
               {station && <Row k="Regra" v="B$ 25 · 50 · 100 · 200" />}
               {util && <Row k="Regra" v="Dados × 4 (×10 com as duas)" />}
               <Row k="Hipoteca" v={money(mortgageValue(square))} />

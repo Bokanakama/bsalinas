@@ -17,10 +17,10 @@ import { Gazette, MoneyRain, ScratchingBanner, TitleInfo } from "@/components/Ga
 export const Route = createFileRoute("/jogar/$code")({
   head: ({ params }) => ({
     meta: [
-      { title: `Carteira — sala ${params.code} | Cidade Boró` },
+      { title: `Carteira — sala ${params.code} | Banco Imobiliário Salinas` },
       { name: "description", content: "Sua carteira de Borós: escolha seu bichinho, jogue os dados e compre terrenos." },
-      { property: "og:title", content: "Carteira — Cidade Boró" },
-      { property: "og:description", content: "Entre na partida de Cidade Boró pelo celular." },
+      { property: "og:title", content: "Carteira — Banco Imobiliário Salinas" },
+      { property: "og:description", content: "Entre na partida de Banco Imobiliário Salinas pelo celular." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -121,7 +121,7 @@ function Wallet() {
       )}
       <header className="cedula relative overflow-hidden rounded-2xl border-4 border-border p-4 shadow-[6px_6px_0_var(--foreground)]">
         <div className="flex items-center justify-between text-xs font-bold uppercase tracking-widest text-muted-foreground">
-          <span>Banco Boró · Sala {code}</span>
+          <span>Banco de Salinas · Sala {code}</span>
           <span>{G.ANIMALS.find((a) => a.id === me.animal)?.name}</span>
         </div>
         <p className="font-display text-2xl" style={{ color: me.color }}>{me.name}</p>

@@ -14,9 +14,9 @@ import { Gazette, MoneyRain, ScratchingBanner, TitleInfo } from "@/components/Ga
 export const Route = createFileRoute("/mestre/$code")({
   head: ({ params }) => ({
     meta: [
-      { title: `Tabuleiro ${params.code} — Cidade Boró` },
-      { name: "description", content: "Tabuleiro mestre e banco central da partida de Cidade Boró." },
-      { property: "og:title", content: "Tabuleiro — Cidade Boró" },
+      { title: `Tabuleiro ${params.code} — Banco Imobiliário Salinas` },
+      { name: "description", content: "Tabuleiro mestre e banco central da partida de Banco Imobiliário Salinas." },
+      { property: "og:title", content: "Tabuleiro — Banco Imobiliário Salinas" },
       { property: "og:description", content: "O banco central da partida: saldos, dados e movimentos." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -338,7 +338,7 @@ function Master() {
   const side = (
     <>
       <div className="flex items-center gap-2 rounded-xl bg-primary px-3 py-[0.6vh] text-primary-foreground shadow-[var(--shadow-soft)]">
-        <span className="flex-1 font-display text-[clamp(13px,2.6vh,28px)]">Cidade Boró</span>
+        <span className="flex-1 font-display text-[clamp(13px,2.6vh,28px)]">Banco Imobiliário Salinas</span>
         <span className="font-display tracking-widest text-[clamp(12px,2.2vh,24px)]">{code}</span>
         <button onClick={() => setPaused(true)} aria-label="Pausar" className="min-h-10 rounded-lg border-2 border-primary-foreground px-2 font-display">❚❚</button>
       </div>

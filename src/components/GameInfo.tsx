@@ -15,7 +15,7 @@ export function Gazette({ state, className = "" }: { state: GameState; className
   const left = Math.max(0, Math.ceil(((ev.expiresAt ?? now + 120_000) - now) / 1000));
   return (
     <div className={`cedula flex items-center gap-2 rounded-xl border-4 border-border px-3 py-1 shadow-[4px_4px_0_var(--foreground)] ${className}`}>
-      <span className="font-display uppercase text-primary">📰 Gazeta de Boró</span>
+      <span className="font-display uppercase text-primary">📰 Gazeta de Salinas</span>
       <span className="flex-1 font-bold">{ev.text}</span>
       <span className="carimbo whitespace-nowrap px-1 text-xs text-destructive">{ev.expiresAt !== undefined ? `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}` : "nesta rodada"}</span>
     </div>
