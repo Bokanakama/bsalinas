@@ -24,7 +24,7 @@ export function TradeTable({ state, pid, initialTo, initialGive, onSend, onClose
   const preview: G.Offer | null = other ? { id: "p", from: pid, to, giveSquares: give, wantSquares: want, cashFrom: Math.max(0, cf - ct), cashTo: Math.max(0, ct - cf) } : null;
   const list = (id: string, sel: number[], set: (v: number[]) => void) => {
     const l = tradable(id);
-    if (!l.length) return <p className="text-xs text-muted-foreground">Nenhum imóvel disponível (sem barracas).</p>;
+    if (!l.length) return <p className="text-xs text-muted-foreground">Nenhum imóvel disponível (sem chalés).</p>;
     return (
       <div className="grid grid-cols-2 gap-1.5">
         {l.map(({ b, i }) => (

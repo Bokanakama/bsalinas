@@ -39,7 +39,7 @@ const KIND_TONE: Record<string, string> = { toll: "text-foreground", fine: "text
 const CORNER: Record<number, { icon: IconName; title: string; tag: string; tone: string }> = {
   0: { icon: "start", title: "Início", tag: "+B$ 200", tone: "bg-secondary text-secondary-foreground" },
   17: { icon: "jail", title: "Delegacia", tag: "Só visitando", tone: "bg-muted text-foreground" },
-  28: { icon: "rest", title: "Folga na Rede", tag: "Descanso", tone: "bg-success text-success-foreground" },
+  28: { icon: "rest", title: "Sombra de Coqueiro", tag: "Descanso", tone: "bg-success text-success-foreground" },
   45: { icon: "gojail", title: "Vá para a Delegacia", tag: "Mandado", tone: "bg-destructive text-destructive-foreground" },
 };
 const ICON_BY_GROUP: Record<number, IconName> = { 8: "bus", 9: "bolt" };
@@ -73,7 +73,7 @@ function Details({ state, i, onClose }: { state: GameState; i: number; onClose: 
             <>
               <Row k="Preço" v={money(sq.price!)} />
               <Row k="Aluguel agora" v={money(rentFor(state, i))} strong />
-              {!util && !station && HOUSE_MULT.slice(1).map((m, k) => <Row key={k} k={k === 3 ? "Com sobrado" : `Com ${k + 1} barraca${k ? "s" : ""}`} v={money((sq.rent ?? 0) * m)} />)}
+              {!util && !station && HOUSE_MULT.slice(1).map((m, k) => <Row key={k} k={k === 3 ? "Com resort" : `Com ${k + 1} chalé${k ? "s" : ""}`} v={money((sq.rent ?? 0) * m)} />)}
               {station && <Row k="Regra" v="Dobra a cada rodoviária" />}
               {util && <Row k="Regra" v="Dados × 4 (×10 com as duas)" />}
               <Row k="Dono" v={owner ? owner.name : "Banco (à venda)"} />

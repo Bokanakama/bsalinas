@@ -50,11 +50,11 @@ describe("Sorte ou Revés", () => {
   it("a luck card moves money between bank and player", () => {
     let s = G.join(G.join(G.newState(), "a", "Ana"), "b", "Beto");
     s = G.start(s);
-    s = G.land(G.roll(s, "a", 3, 4), "p", 0); // square 7, first card +150
+    s = G.land(G.roll(s, "a", 3, 4), "p", 0); // square 7, first card -120 (maré pegou o carro)
     expect(s.pending).toMatchObject({ kind: "scratch", playerId: "a" });
     expect(G.roll(s, "b", 1, 2)).toBe(s); // next player waits for the raspadinha
     s = G.revealCard(s, "a");
-    expect(s.players[0]!.balance).toBe(G.START_BALANCE + 150);
+    expect(s.players[0]!.balance).toBe(G.START_BALANCE - 120);
   });
 });
 
@@ -152,7 +152,7 @@ describe("auction, mortgage, trade, city events", () => {
 describe("bigger board and new cards", () => {
   it("board has 56 squares with the Delegacia at 17", () => {
     expect(G.BOARD).toHaveLength(56);
-    expect(G.BOARD[G.JAIL]!.name).toBe("Delegacia (visita)");
+    expect(G.BOARD[G.JAIL]!.name).toBe("Delegacia de Salinas (visita)");
     expect(G.BOARD[G.GOJAIL]!.kind).toBe("gojail");
   });
   it("Saia Livre card is kept and used instead of going to jail", () => {
