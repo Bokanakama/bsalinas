@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { supabase } from "@/integrations/supabase/client";
-import { saveState } from "@/lib/room";
+import { publishState, joinRoomChannel } from "@/lib/room";
 import * as G from "@/lib/game";
 import { Board } from "@/components/Board";
 import { DicePair } from "@/components/Dice";
@@ -48,13 +48,13 @@ function Master() {
   const commit = useCallback((next: G.GameState) => {
     ref.current = next;
     setState(next);
-    void saveState(code, next);
+    void publishState(code, next);
   }, [code]);
 
   const handle = useCallback(async (a: ActionRow) => {
     if (seen.current.has(a.id) || !ref.current) return;
     seen.current.add(a.id);
-    let s: G.GameState = { ...ref.current, lastActionAt: a.created_at };
+    let s: G.GameState = { ...ref.current, lastActionAt: a.created_at || ref.current.lastActionAt };
     const p = a.payload;
     switch (a.type) {
       case "join": s = G.join(s, a.player_id, String(p.name ?? ""), String((p as { animal?: string }).animal ?? "")); break;
@@ -123,6 +123,12 @@ function Master() {
     setOrigin(window.location.origin);
     let ch: ReturnType<typeof supabase.channel> | null = null;
     let live = false, tick = 0;
+    const room = joinRoomChannel(code);
+    room.ch.on("broadcast", { event: "player_action" }, ({ payload }) => {
+      const a = payload as ActionRow;
+      if (a?.id && a.room_code === code && ref.current) enqueue(a);
+    });
+    room.subscribe();
     (async () => {
       const { data } = await supabase.from("rooms").select("state").eq("code", code).maybeSingle();
       if (!data) return setMissing(true);
@@ -149,7 +155,7 @@ function Master() {
     }
     // Fast poll only while the live connection is down; a slow check otherwise, skipped when hidden.
     const poll = setInterval(() => { tick++; if (ref.current && document.visibilityState === "visible" && (!live || tick % 4 === 0)) void catchUp(); }, 2000);
-    return () => { clearInterval(poll); if (ch) supabase.removeChannel(ch); };
+    return () => { clearInterval(poll); if (ch) supabase.removeChannel(ch); room.leave(); };
   }, [code, enqueue, commit]);
 
   // The master persists the same expiry for every device, even between turns.
