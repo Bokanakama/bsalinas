@@ -32,10 +32,44 @@ export function saveState(code: string, state: GameState) {
   });
   return saving;
 }
+/** Master: push state to phones right away, then persist. */
+export function publishState(code: string, state: GameState) {
+  broadcast(code, "room_state", { state, at: new Date().toISOString() });
+  return saveState(code, state);
+}
+
+
+/** One shared broadcast room per game: phones send actions, the master sends state, straight over the socket. */
+type Ch = ReturnType<typeof supabase.channel>;
+const rooms = new Map<string, { ch: Ch; refs: number; ready: boolean }>();
+export function joinRoomChannel(code: string) {
+  let r = rooms.get(code);
+  if (!r) {
+    const ch = supabase.channel(`room:${code}`, { config: { broadcast: { self: false } } });
+    r = { ch, refs: 0, ready: false };
+    rooms.set(code, r);
+  }
+  r.refs++;
+  const entry = r;
+  return {
+    ch: entry.ch,
+    subscribe(cb?: (live: boolean) => void) {
+      entry.ch.subscribe((st) => { entry.ready = st === "SUBSCRIBED"; cb?.(entry.ready); });
+    },
+    leave() { if (--entry.refs <= 0) { rooms.delete(code); void supabase.removeChannel(entry.ch); } },
+  };
+}
+export function broadcast(code: string, event: string, payload: Record<string, unknown>) {
+  const r = rooms.get(code);
+  if (r?.ready) void r.ch.send({ type: "broadcast", event, payload }).catch(() => {});
+}
 
 export async function sendAction(code: string, playerId: string, type: string, payload: Record<string, unknown> = {}) {
+  const id = crypto.randomUUID();
+  // Instant path; the database insert below (same id) is the reliable fallback and the master dedupes.
+  broadcast(code, "player_action", { id, room_code: code, player_id: playerId, type, payload, created_at: "" });
   for (let attempt = 0; attempt < 3; attempt++) {
-    const { error } = await supabase.from("actions").insert({ room_code: code, player_id: playerId, type, payload: payload as Json });
+    const { error } = await supabase.from("actions").insert({ id, room_code: code, player_id: playerId, type, payload: payload as Json });
     if (!error) return true;
     console.error("Falha ao enviar ação", type, error.message);
     await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
@@ -64,6 +98,12 @@ export function useRoomState(code: string) {
       if (data.updated_at !== stamp) apply(data.state as unknown as GameState, data.updated_at);
     };
     void refetch();
+    const room = joinRoomChannel(code);
+    room.ch.on("broadcast", { event: "room_state" }, ({ payload }) => {
+      const m = payload as { state: GameState; at: string };
+      if (m?.state) apply(m.state, m.at);
+    });
+    room.subscribe();
     const ch = supabase
       .channel(`room-${code}-${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "rooms", filter: `code=eq.${code}` }, (p) => {
@@ -84,6 +124,7 @@ export function useRoomState(code: string) {
       window.removeEventListener("online", wake);
       window.removeEventListener("focus", wake);
       supabase.removeChannel(ch);
+      room.leave();
     };
   }, [code]);
   return { state, missing };
