@@ -27,8 +27,13 @@ function Home() {
 
   async function create() {
     setBusy(true); setErr("");
-    const c = makeCode();
-    const { error } = await supabase.from("rooms").insert({ code: c, state: newState() as unknown as Json });
+    // Retry with a fresh code if the random one is already taken by another room.
+    let c = makeCode();
+    let { error } = await supabase.from("rooms").insert({ code: c, state: newState() as unknown as Json });
+    for (let i = 0; error?.code === "23505" && i < 4; i++) {
+      c = makeCode();
+      ({ error } = await supabase.from("rooms").insert({ code: c, state: newState() as unknown as Json }));
+    }
     setBusy(false);
     if (error) setErr("Não deu para criar a sala. Verifique a internet e tente de novo.");
     else {
