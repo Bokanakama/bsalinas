@@ -148,13 +148,13 @@ export function Board({ state, center, side, displayPos, focus }: { state: GameS
                 <span className={`font-display leading-[1.05] break-words ${horiz ? "text-[0.95cqw] line-clamp-2" : "max-w-full text-[0.8cqw] leading-[1] line-clamp-3 [overflow-wrap:anywhere] hyphens-auto"}`}>{sq.name}</span>
                 {prop ? (
                   <span className={`flex shrink-0 items-center leading-none ${horiz ? "flex-row gap-[0.3cqw]" : "flex-col gap-[0.15cqw]"}`}>
-                    {!owner && <span className="text-[0.9cqw] text-muted-foreground">{money(sq.price!)}</span>}
+                    {!owner && (horiz || sq.name.length <= 16) && <span className="text-[0.9cqw] text-muted-foreground">{money(sq.price!)}</span>}
                     <span className={`rounded-full px-[0.5cqw] py-[0.1cqw] text-[1cqw] font-bold ${full || h > 0 ? "bg-secondary text-secondary-foreground" : owner ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"}`}>
                       {money(rent)}{full && !h ? " ×2" : ""}
                     </span>
                   </span>
                 ) : (
-                  <span className={`text-[0.95cqw] font-bold ${KIND_TONE[sq.kind] ?? ""}`}>{sq.amount ? (sq.kind === "samba" ? "−" + money(sq.amount) + " c/u" : (sq.kind === "bonus" ? "+" : "−") + money(sq.amount)) : ""}</span>
+                  <span className={`text-[0.95cqw] font-bold ${KIND_TONE[sq.kind] ?? ""}`}>{sq.amount ? (sq.kind === "samba" ? "−" + money(sq.amount) + (horiz ? " c/u" : "") : (sq.kind === "bonus" ? "+" : "−") + money(sq.amount)) : ""}</span>
                 )}
               </div>
               {owner && !horiz && (
