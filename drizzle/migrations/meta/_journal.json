@@ -1,5 +1,13 @@
 {
   "version": "7",
   "dialect": "postgresql",
-  "entries": []
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1794198178753,
+      "tag": "0000_enable_realtime_rooms_actions",
+      "breakpoints": true
+    }
+  ]
 }
