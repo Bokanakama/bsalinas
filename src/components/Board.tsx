@@ -143,18 +143,18 @@ export function Board({ state, center, side, displayPos, focus }: { state: GameS
           return (
             <button type="button" onClick={() => setPicked(i)} key={i} style={{ gridRow: r, gridColumn: c }} className={`${base} flex rounded-[0.5cqw] bg-card text-card-foreground ${horiz ? (side === "left" ? "flex-row-reverse" : "flex-row") : "flex-col"} ${mort ? "grayscale-[60%]" : ""}`}>
               {band}
-              <div className={`flex min-w-0 flex-1 flex-col items-center justify-between text-center ${horiz ? "px-[0.4cqw] py-[0.2cqw] justify-center gap-[0.2cqw]" : "px-[0.2cqw] pb-[0.3cqw] pt-[1.4cqw]"}`}>
+              <div className={`flex min-w-0 flex-1 flex-col items-center justify-between text-center ${horiz ? "px-[0.4cqw] py-[0.2cqw] justify-center gap-[0.2cqw]" : "px-[0.2cqw] pb-[0.2cqw] pt-[0.6cqw]"}`}>
                 {!prop && !horiz && <Icon name={KIND_ICON[sq.kind] ?? "luck"} className={`size-[1.6cqw] shrink-0 ${KIND_TONE[sq.kind] ?? ""}`} />}
-                <span className={`font-display leading-[1.05] break-words ${horiz ? "text-[0.95cqw] line-clamp-2" : "text-[0.92cqw] line-clamp-3 [overflow-wrap:anywhere]"}`}>{sq.name}</span>
+                <span className={`font-display leading-[1.05] break-words ${horiz ? "text-[0.95cqw] line-clamp-2" : "max-w-full text-[0.8cqw] leading-[1] line-clamp-3 [overflow-wrap:anywhere] hyphens-auto"}`}>{sq.name}</span>
                 {prop ? (
-                  <span className={`flex items-center gap-[0.3cqw] leading-none ${horiz ? "flex-row" : "flex-col"}`}>
-                    {!owner && <span className="text-[0.9cqw] text-muted-foreground">{money(sq.price!)}</span>}
+                  <span className={`flex shrink-0 items-center leading-none ${horiz ? "flex-row gap-[0.3cqw]" : "flex-col gap-[0.15cqw]"}`}>
+                    {!owner && (horiz || sq.name.length <= 16) && <span className="text-[0.9cqw] text-muted-foreground">{money(sq.price!)}</span>}
                     <span className={`rounded-full px-[0.5cqw] py-[0.1cqw] text-[1cqw] font-bold ${full || h > 0 ? "bg-secondary text-secondary-foreground" : owner ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"}`}>
                       {money(rent)}{full && !h ? " ×2" : ""}
                     </span>
                   </span>
                 ) : (
-                  <span className={`text-[0.95cqw] font-bold ${KIND_TONE[sq.kind] ?? ""}`}>{sq.amount ? (sq.kind === "samba" ? "−" + money(sq.amount) + " c/u" : (sq.kind === "bonus" ? "+" : "−") + money(sq.amount)) : ""}</span>
+                  <span className={`text-[0.95cqw] font-bold ${KIND_TONE[sq.kind] ?? ""}`}>{sq.amount ? (sq.kind === "samba" ? "−" + money(sq.amount) + (horiz ? " c/u" : "") : (sq.kind === "bonus" ? "+" : "−") + money(sq.amount)) : ""}</span>
                 )}
               </div>
               {owner && !horiz && (
