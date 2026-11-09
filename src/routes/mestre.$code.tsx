@@ -126,7 +126,7 @@ function Master() {
     const room = joinRoomChannel(code);
     room.ch.on("broadcast", { event: "player_action" }, ({ payload }) => {
       const a = payload as ActionRow;
-      if (a?.id && a.room_code === code && ref.current) enqueue(a);
+      if (a?.id && (payload as { room_code?: string }).room_code === code && ref.current) enqueue(a);
     });
     room.subscribe();
     (async () => {
