@@ -77,6 +77,10 @@ function Master() {
       case "tradeAnswer": s = G.answerTrade(s, a.player_id, String(p.id), !!p.accept); break;
       case "payCollect": s = G.payCollect(s, a.player_id); break;
       case "build": s = G.build(s, a.player_id, Number((p as { square?: number }).square)); break;
+      case "sellHouse": s = G.sellHouse(s, a.player_id, Number((p as { square?: number }).square)); break;
+      case "autoResolve": s = G.autoResolve(s); break;
+      case "skipTurn": s = G.skipTurn(s); break;
+      case "kick": s = G.kickPlayer(s, String(p.id)); break;
       case "roll": {
         const before = s;
         const d1 = 1 + Math.floor(Math.random() * 6), d2 = 1 + Math.floor(Math.random() * 6);
@@ -104,7 +108,7 @@ function Master() {
           setDisplayPos((d) => ({ ...d, [a.player_id]: (from + k) % G.BOARD.length }));
           
           sfx.step();
-          await new Promise((r) => setTimeout(r, 180));
+          await new Promise((r) => setTimeout(r, 90));
         }
         await new Promise((r) => setTimeout(r, 400));
         setFocus(null);
@@ -153,8 +157,8 @@ function Master() {
       const { data: backlog } = await q.limit(200);
       (backlog as ActionRow[] | null)?.forEach((a) => { if (!seen.current.has(a.id)) enqueue(a); });
     }
-    // Fast poll only while the live connection is down; a slow check otherwise, skipped when hidden.
-    const poll = setInterval(() => { tick++; if (ref.current && document.visibilityState === "visible" && (!live || tick % 4 === 0)) void catchUp(); }, 2000);
+    // The board is the game's server: it keeps checking even when its window is in the background.
+    const poll = setInterval(() => { tick++; if (ref.current && (!live || tick % 4 === 0)) void catchUp(); }, 2000);
     return () => { clearInterval(poll); if (ch) supabase.removeChannel(ch); room.leave(); };
   }, [code, enqueue, commit]);
 
@@ -205,6 +209,48 @@ function Master() {
     }, Math.max(1000, collectEnds - Date.now() + 200));
     return () => clearTimeout(t);
   }, [collectEnds, commit]);
+
+  /** Host buttons go through the same queue as phone actions. */
+  const hostAct = useCallback((type: string, payload: Record<string, unknown> = {}) => {
+    const cur = ref.current ? G.current(ref.current) : undefined;
+    enqueue({ id: `host-${crypto.randomUUID()}`, player_id: cur?.id ?? "", type, payload, created_at: "" });
+  }, [enqueue]);
+
+  // Turn timer: 60 s to roll, buy, pay rent or settle a debt; then the bank acts for the player.
+  const tpd = state?.pending;
+  const timed = state?.phase === "playing" && !state.moving && !paused && (!tpd || tpd.kind === "buy" || tpd.kind === "pix" || tpd.kind === "debt");
+  const turnKey = timed ? `${state!.turn}|${state!.rollId}|${tpd?.kind ?? ""}|${tpd?.kind === "pix" ? tpd.id : ""}` : "";
+  const [deadline, setDeadline] = useState(0);
+  const [clock, setClock] = useState(0);
+  useEffect(() => {
+    if (!turnKey) { setDeadline(0); return; }
+    const end = Date.now() + G.TURN_MS;
+    setDeadline(end); setClock(Date.now());
+    let fired = false, lastBeep = 0;
+    const t = setInterval(() => {
+      const n = Date.now();
+      setClock(n);
+      const left = Math.ceil((end - n) / 1000);
+      if (left <= 10 && left > 0 && left !== lastBeep) { lastBeep = left; sfx.step(); }
+      if (n >= end && !fired) {
+        fired = true;
+        const s = ref.current;
+        if (!s) return;
+        if (!s.pending) hostAct("roll", { rollId: s.rollId });
+        else hostAct("autoResolve");
+      }
+    }, 250);
+    return () => clearInterval(t);
+  }, [turnKey, hostAct]);
+
+  // Keep the actions table small: drop old processed actions every round and everything once the game ends.
+  const round = state?.round ?? 0;
+  const phase = state?.phase;
+  useEffect(() => {
+    if (!phase || phase === "lobby") return;
+    void supabase.rpc("prune_room_actions", { _code: code });
+  }, [round, phase, code]);
+  const [hostFor, setHostFor] = useState<string | null>(null);
 
   // keep tokens in sync with state when not animating
   useEffect(() => {
@@ -300,6 +346,10 @@ function Master() {
           </div>
         </div>
         <DicePair dice={state.dice} rollId={state.rollId} size={56} />
+        {deadline > 0 && (() => {
+          const left = Math.max(0, Math.ceil((deadline - clock) / 1000));
+          return <p aria-live="polite" className={`rounded-full border-2 px-3 font-display text-[3.4cqw] ${left <= 10 ? "animate-pulse border-destructive bg-destructive text-destructive-foreground" : "border-border bg-card"}`}>⏱️ {left}s{left <= 10 ? " · o banco vai agir" : ""}</p>;
+        })()}
         {pd?.kind === "buy" && (
           <div className="animate-pop rounded-xl border-4 border-border bg-secondary px-4 py-2 font-display">
             <p className="text-[4.7cqw]">{nameOf(pd.playerId)} pode comprar {G.BOARD[pd.square]!.name}</p>
@@ -355,7 +405,7 @@ function Master() {
           const props = Object.entries(state.owners).filter(([, o]) => o === p.id);
           const active = state.phase === "playing" && i === state.turn;
           return (
-            <div key={p.id} className={`flex items-center ${p.out ? "opacity-40 grayscale" : ""} gap-2 rounded-xl bg-card p-[0.7vh] shadow-[var(--shadow-soft)] transition ${active ? "ring-4 ring-secondary" : ""}`}>
+            <button type="button" key={p.id} onClick={() => !p.out && setHostFor(p.id)} aria-label={`Opções de ${p.name}`} className={`flex items-center text-left ${p.out ? "opacity-40 grayscale" : ""} gap-2 rounded-xl bg-card p-[0.7vh] shadow-[var(--shadow-soft)] transition ${active ? "ring-4 ring-secondary" : ""}`}>
               <Animal id={p.animal} className={`h-[clamp(28px,6.5vh,80px)] w-auto ${active ? "animate-bob" : ""}`} />
               <div className="min-w-0 flex-1">
                 <p className="truncate font-display text-[clamp(11px,2.1vh,22px)]" style={{ color: p.color }}>{p.name}{p.jail ? " 👮" : ""}{p.freeJail ? " 🎫" : ""}{p.out ? " · faliu" : ""}</p>
@@ -365,10 +415,18 @@ function Master() {
                   {props.map(([sq]) => <span key={sq} title={G.BOARD[+sq]!.name} className="h-[1vh] w-[1.5vh] rounded-sm border border-border" style={{ background: `var(--group-${G.BOARD[+sq]!.group})` }} />)}
                 </div>
               </div>
-            </div>
+            </button>
           );
         })}
       </div>
+      {state.phase === "playing" && state.players.length <= 3 && (
+        <div className="rounded-xl bg-card p-[0.8vh] shadow-[var(--shadow-soft)]">
+          <p className="font-display text-[clamp(11px,2vh,22px)] text-primary">Rodada {(state.round ?? 0) + 1}</p>
+          <ul className="space-y-[0.4vh] text-[clamp(10px,1.6vh,17px)]">
+            {state.log.slice(0, 3).map((l, i) => <li key={i} className={i === 0 ? "font-bold" : "text-muted-foreground"}>{l}</li>)}
+          </ul>
+        </div>
+      )}
       {state.players.length === 0 && <p className="rounded-xl bg-card p-3 text-sm">Aguardando jogadores…</p>}
     </>
   );
@@ -390,6 +448,12 @@ function Master() {
               <button onClick={() => { setVoice((v) => !v); window.speechSynthesis?.cancel(); }} className="flex-1 rounded-xl border-4 border-border bg-accent py-2 font-display text-accent-foreground">{voice ? "🔊 Narração" : "🔇 Narração"}</button>
               <Link to="/" className="flex-1 rounded-xl border-4 border-border bg-muted py-2 text-center font-display">Sair</Link>
             </div>
+            {state.phase === "playing" && (
+              <div className="flex flex-wrap gap-2">
+                <button disabled={state.moving || (!!pd && !["buy", "pix", "debt"].includes(pd.kind))} onClick={() => { hostAct("skipTurn"); setPaused(false); }} className="flex-1 rounded-xl border-4 border-border bg-secondary py-2 font-display">⏭️ Passar a vez de {cur?.name}</button>
+                <button onClick={() => { setHostFor(cur?.id ?? null); setPaused(false); }} className="flex-1 rounded-xl border-4 border-border bg-destructive py-2 font-display text-destructive-foreground">🚫 Desconectar jogador…</button>
+              </div>
+            )}
             <h3 className="font-display">Histórico</h3>
             <div className="min-h-0 flex-1 overflow-auto rounded-xl border-2 border-border p-2 text-sm">
               {state.log.map((l, i) => <p key={i} className={i === 0 ? "font-bold" : "text-muted-foreground"}>{l}</p>)}
@@ -397,6 +461,26 @@ function Master() {
           </div>
         </div>
       )}
+
+      {hostFor && (() => {
+        const p = state.players.find((x) => x.id === hostFor);
+        if (!p) return null;
+        const isTurn = state.phase === "playing" && G.current(state).id === p.id && !state.moving && (!state.pending || ["buy", "pix", "debt"].includes(state.pending.kind));
+        return (
+          <div className="absolute inset-0 z-40 flex items-center justify-center bg-foreground/60 p-6" onClick={() => setHostFor(null)}>
+            <div role="dialog" aria-label={`Opções de ${p.name}`} onClick={(e) => e.stopPropagation()} className="flex w-full max-w-md flex-col gap-3 rounded-2xl border-4 border-border bg-card p-5 shadow-[8px_8px_0_var(--foreground)]">
+              <div className="flex items-center gap-3"><Animal id={p.animal} className="h-16 w-auto" /><h2 className="font-display text-3xl" style={{ color: p.color }}>{p.name}</h2></div>
+              {isTurn && <button onClick={() => { hostAct("skipTurn"); setHostFor(null); }} className="rounded-xl border-4 border-border bg-secondary py-2 font-display">⏭️ Passar a vez</button>}
+              <button onClick={() => { if (window.confirm(`${p.name} vai ${state.phase === "lobby" ? "sair da sala" : "falir e devolver os bens ao banco"}. Confirmar?`)) { hostAct("kick", { id: p.id }); setHostFor(null); } }} className="rounded-xl border-4 border-border bg-destructive py-2 font-display text-destructive-foreground">{state.phase === "lobby" ? "Tirar da sala" : "🚫 Desconectar / Falir jogador"}</button>
+              <button onClick={() => setHostFor(null)} className="rounded-xl border-4 border-border bg-muted py-2 font-display">Fechar</button>
+            </div>
+          </div>
+        );
+      })()}
+      <div className="portrait-lock absolute inset-0 z-50 hidden flex-col items-center justify-center gap-4 bg-background p-8 text-center font-display text-2xl">
+        <span className="text-6xl" aria-hidden>📱↻</span>
+        Vire a tela na horizontal (modo paisagem) para usar o tabuleiro
+      </div>
     </main>
   );
 }

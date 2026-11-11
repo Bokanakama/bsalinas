@@ -12,5 +12,5 @@ export function Animal({ id, className = "", alt, badge }: { id: string | undefi
   const name = ANIMALS.find((a) => a.id === id)?.name ?? "Personagem";
   const color = ANIMALS.find((a) => a.id === id)?.color;
   const style = badge && color ? { backgroundColor: color, borderRadius: 9999, padding: "6%", boxShadow: "0 0 0 2px var(--card)" } : undefined;
-  return <img style={style} src={IMG[id ?? ""] ?? coelho} alt={alt ?? name} width={320} height={320} decoding="async" loading="lazy" draggable={false} className={`object-contain drop-shadow-[0_3px_0_var(--foreground)] ${className}`} />;
+  return <img style={style} src={IMG[id ?? ""] ?? coelho} alt={alt ?? name} width={320} height={320} decoding="async" loading="eager" draggable={false} className={`object-contain drop-shadow-[0_3px_0_var(--foreground)] ${className}`} />;
 }

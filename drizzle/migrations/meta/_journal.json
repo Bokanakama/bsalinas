@@ -8,6 +8,13 @@
       "when": 1794198178753,
       "tag": "0000_enable_realtime_rooms_actions",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794363912626,
+      "tag": "0001_prune_room_actions",
+      "breakpoints": true
     }
   ]
 }
