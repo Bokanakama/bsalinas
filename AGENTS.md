@@ -32,3 +32,4 @@ use the editor.
 - Game rules live as pure functions in src/lib/game.ts; only the master page writes room state, players insert actions it processes — keeps one authority and testable rules.
 - City effects use a shared absolute expiry persisted by the master; legacy round-based events are converted on load so all devices use one deadline.
 - HTTP endpoints are real file routes under src/routes/api/ (external callers under api/public/) exporting createFileRoute with server.handlers; a plain exported `Route` object breaks the generated route tree and 500s every page.
+- Turn timeouts and host buttons (skip/kick) are synthetic actions enqueued on the master's single action queue; their rules are pure functions in game.ts — keeps one ordered writer.
