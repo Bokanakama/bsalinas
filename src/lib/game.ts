@@ -96,7 +96,7 @@ export const BOARD: Square[] = [
 ];
 
 /** Sorte ou Revés cards: positive = bank pays player, negative = player pays bank. */
-export interface LuckCard { text: string; amount: number; freeJail?: boolean; goto?: number; jail?: boolean; each?: number; perHouse?: number }
+export interface LuckCard { text: string; amount: number; freeJail?: boolean; goto?: number; jail?: boolean; each?: number; perHouse?: number; /** Only cards that cross the Início pay the bonus. */ passStart?: boolean }
 export const LUCK_CARDS: LuckCard[] = [
   { text: "A maré subiu e pegou seu carro no Atalaia: pague o reboque do trator", amount: -120 },
   { text: "Vendeu caranguejada e camarão rosa na barraca da praia", amount: 100 },
@@ -108,7 +108,7 @@ export const LUCK_CARDS: LuckCard[] = [
   { text: "Consórcio do resort foi sorteado!", amount: 200 },
   { text: "Som alto depois do horário na praia: vá para a Delegacia", amount: 0, jail: true },
   { text: "Taxa de marina e guarda-barco em Cuiarana", amount: -60 },
-  { text: "Carona de buggy até o Início", amount: 0, goto: 0 },
+  { text: "Carona de buggy até o Início", amount: 0, goto: 0, passStart: true },
   { text: "A maré de março estragou suas construções: pague por chalé", amount: 0, perHouse: 25 },
   { text: "Turistas de Belém lotaram sua pousada no feriado", amount: 150 },
   { text: "Ganhou o bolão do Círio", amount: 120 },
@@ -381,7 +381,8 @@ function applyCard(s: GameState): GameState {
       if (card.jail) return endTurn(sendToJail(next, p.id, `Revés: ${card.text}`.replace(": vá para a Delegacia", "")));
       if (card.goto !== undefined) {
         next = patch(next, p.id, { pos: card.goto });
-        if (card.goto <= p.pos) next = move(patch(next, p.id, { laps: (p.laps ?? 0) + 1 }), BANK, p.id, startBonus(s), "Passou pelo Início");
+        if (!card.passStart) return endTurn(say(next, `Sorte: ${card.text}`, "info"));
+        next = move(patch(next, p.id, { laps: (p.laps ?? 0) + 1 }), BANK, p.id, startBonus(s), "Passou pelo Início");
         return endTurn(say(next, `Sorte: ${card.text} (+${money(startBonus(s))})`, "good"));
       }
       if (card.each) {
@@ -458,12 +459,29 @@ export function build(s: GameState, id: string, square: number): GameState {
   const h = housesAt(s, square);
   const cost = houseCost(sq.group!);
   if (h >= MAX_HOUSES || p.balance < cost) return s;
+  // Construção nivelada: build on the street with the fewest chalés of the color first.
+  if (BOARD.some((b, i) => b.group === sq.group && housesAt(s, i) < h)) return s;
   const next = move({ ...s, houses: { ...s.houses, [square]: h + 1 } }, id, BANK, cost, `Obra ${sq.name}`);
   return say(next, `${p.name} construiu ${h + 1 === MAX_HOUSES ? "um Resort" : "um chalé"} em ${sq.name}`, "good");
 }
 
+export const houseSaleValue = (group: number) => Math.floor(houseCost(group) / 2);
+/** Vender chalé: the bank pays half the build cost. Demolition is uniform (most-built street first). */
+export function sellHouse(s: GameState, id: string, square: number): GameState {
+  const sq = BOARD[square];
+  const p = s.players.find((x) => x.id === id);
+  if (!sq || !p || p.out || s.phase !== "playing" || s.moving || s.owners[square] !== id) return s;
+  const h = housesAt(s, square);
+  if (h <= 0 || BOARD.some((b, i) => b.group === sq.group && housesAt(s, i) > h)) return s;
+  const houses = { ...s.houses, [square]: h - 1 };
+  if (!houses[square]) delete houses[square];
+  const value = houseSaleValue(sq.group!);
+  const next = move({ ...s, houses }, BANK, id, value, `Venda de chalé ${sq.name}`);
+  return say(next, `${p.name} vendeu ${h === MAX_HOUSES ? "o Resort" : "um chalé"} de ${sq.name} (+${money(value)})`, "info");
+}
+
 /** Player out: remaining money and lands go to the creditor (or back to the bank). */
-function bankrupt(s: GameState, id: string, creditor: string): GameState {
+function bankrupt(s: GameState, id: string, creditor: string, keepPending = false): GameState {
   const p = s.players.find((x) => x.id === id)!;
   const owners: Record<string, string> = {};
   const houses = { ...s.houses };
@@ -474,7 +492,7 @@ function bankrupt(s: GameState, id: string, creditor: string): GameState {
     else { delete houses[i]; delete mortgaged[i]; }
   }
   const offer = s.offer && (s.offer.from === id || s.offer.to === id) ? null : s.offer;
-  let next: GameState = { ...s, owners, houses, mortgaged, offer: offer ?? null, pending: null };
+  let next: GameState = { ...s, owners, houses, mortgaged, offer: offer ?? null, pending: keepPending ? s.pending : null };
   if (creditor !== BANK && p.balance > 0) next = move(next, id, creditor, p.balance, "Falência");
   next = patch(next, id, { out: true, balance: 0, jail: 0, doubles: 0 });
   next = say(next, `${p.name} faliu!${creditor !== BANK ? ` Bens vão para ${nameOf(s, creditor)}` : ""}`, "bad");
@@ -484,7 +502,10 @@ function bankrupt(s: GameState, id: string, creditor: string): GameState {
 }
 /** Cash the player could still raise by mortgaging lands (no barraquinhas in their color). */
 export function liquidity(s: GameState, id: string): number {
-  return Object.entries(s.owners).filter(([i, o]) => o === id && !isMortgaged(s, +i) && !BOARD.some((b, k) => b.group === BOARD[+i]!.group && housesAt(s, k) > 0)).reduce((t, [i]) => t + mortgageValue(+i), 0);
+  return Object.entries(s.owners).filter(([, o]) => o === id).reduce((t, [i]) => {
+    const g = BOARD[+i]!.group ?? 0;
+    return t + housesAt(s, +i) * houseSaleValue(g) + (isMortgaged(s, +i) ? 0 : mortgageValue(+i));
+  }, 0);
 }
 /** Owes more than the balance: open the Risco de Falência window if assets cover it, otherwise go bankrupt. */
 function debtOrBankrupt(s: GameState, id: string, to: string, amount: number, reason: string): GameState {
@@ -706,4 +727,58 @@ export function honors(s: GameState): { icon: string; title: string; player: Pla
     if (best && v > 0) out.push({ icon: d.icon, title: d.title, player: best, value: d.fmt(v) });
   }
   return out;
+}
+
+/** Seconds a player has to act on their turn before the bank acts for them. */
+export const TURN_MS = 60_000;
+/** Turn timeout for decisions (buy, rent Pix, debt). Rolling is done by the master with real dice. */
+export function autoResolve(s: GameState): GameState {
+  const pd = s.pending;
+  if (s.phase !== "playing" || s.moving || !pd) return s;
+  if (pd.kind === "buy") {
+    const sq = BOARD[pd.square]!;
+    return endTurn(say({ ...s, pending: null }, `Tempo esgotado: ${nameOf(s, pd.playerId)} não comprou ${sq.name}`));
+  }
+  if (pd.kind === "pix") {
+    if (pd.reason === "Pix") return say({ ...s, pending: null }, "Pix cancelado (tempo esgotado)");
+    const p = s.players.find((x) => x.id === pd.from)!;
+    if (p.balance >= pd.amount) return confirmPix(s, pd.from, pd.id);
+    return endTurn(debtOrBankrupt({ ...s, pending: null }, pd.from, pd.to, pd.amount, pd.reason));
+  }
+  if (pd.kind === "debt") {
+    const p = s.players.find((x) => x.id === pd.playerId)!;
+    return p.balance >= pd.amount ? payDebt(s, pd.playerId) : giveUp(s, pd.playerId);
+  }
+  return s;
+}
+/** Host: "Passar a vez". Pending decisions time out; auctions, raspadinhas and cobranças keep their own clocks. */
+export function skipTurn(s: GameState): GameState {
+  if (s.phase !== "playing" || s.moving) return s;
+  const pd = s.pending;
+  if (pd && (pd.kind === "buy" || pd.kind === "pix" || pd.kind === "debt")) {
+    const n = autoResolve(s);
+    return n.pending || n.turn !== s.turn ? n : endTurn(n);
+  }
+  if (pd) return s;
+  const cur = current(s);
+  return endTurn(say(patch(s, cur.id, { doubles: 0 }), `O tabuleiro passou a vez de ${cur.name}`));
+}
+/** Host: remove an absent player. In the lobby they just leave; in a game they go bankrupt to the bank. */
+export function kickPlayer(s: GameState, id: string): GameState {
+  const p = s.players.find((x) => x.id === id);
+  if (!p || p.out) return s;
+  if (s.phase === "lobby") return say({ ...s, players: s.players.filter((x) => x.id !== id) }, `${p.name} saiu da sala`);
+  if (s.phase !== "playing" || s.moving) return s;
+  const wasTurn = current(s).id === id;
+  const pd = s.pending;
+  const involved = !!pd && (("playerId" in pd && pd.playerId === id) || (pd.kind === "pix" && (pd.from === id || pd.to === id)) || (pd.kind === "debt" && pd.to === id) || (pd.kind === "collect" && pd.targetId === id));
+  let next = bankrupt(s, id, BANK, !involved);
+  if (next.pending?.kind === "auction") {
+    const a = next.pending;
+    const order = a.order.filter((x) => x !== id);
+    next = { ...next, pending: !order.length ? null : { ...a, order, turn: a.turn % order.length, bidder: a.bidder === id ? null : a.bidder, bid: a.bidder === id ? 0 : a.bid } };
+  }
+  if (next.pending?.kind === "collect") next = closeCollect(next);
+  if (next.phase === "playing" && wasTurn && !next.pending) next = endTurn(next);
+  return next;
 }
