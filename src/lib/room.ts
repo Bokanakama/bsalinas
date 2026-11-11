@@ -17,6 +17,11 @@ export function getPlayerId() {
   return id;
 }
 
+/** Reconnect: take over a seat that was played from another tab or browser. */
+export function setPlayerId(id: string) {
+  localStorage.setItem("boro-pid", id);
+}
+
 // Saves are chained so an older state can never land after a newer one; bursts collapse to the latest.
 let saving: Promise<void> = Promise.resolve();
 const latest = new Map<string, GameState>();

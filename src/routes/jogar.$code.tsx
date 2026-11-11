@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { getPlayerId, sendAction, useRoomState } from "@/lib/room";
+import { getPlayerId, sendAction, setPlayerId, useRoomState } from "@/lib/room";
 import * as G from "@/lib/game";
 import { DicePair } from "@/components/Dice";
 import { PixScanner } from "@/components/PixScanner";
@@ -13,6 +13,7 @@ import { PropertyDetails } from "@/components/PropertyDetails";
 import { TradeTable } from "@/components/TradeTable";
 import { ScratchCard } from "@/components/ScratchCard";
 import { Gazette, MoneyRain, ScratchingBanner, TitleInfo } from "@/components/GameInfo";
+import { MiniMap } from "@/components/MiniMap";
 
 export const Route = createFileRoute("/jogar/$code")({
   head: ({ params }) => ({
@@ -41,6 +42,8 @@ function Wallet() {
   const [trade, setTrade] = useState<{ to?: string; give?: number[] } | null>(null);
   const [now, setNow] = useState(0);
   const [inspect, setInspect] = useState<number | null>(null);
+  const [map, setMap] = useState(false);
+  const [joinError, setJoinError] = useState("");
   useEffect(() => setPid(getPlayerId()), []);
 
   const [netFail, setNetFail] = useState(false);
@@ -58,15 +61,32 @@ function Wallet() {
   const taken = state ? G.takenAnimals(state) : new Set<string>();
 
   // if my chosen animal got taken by someone else, unselect and allow retry
-  useEffect(() => { if (animal && taken.has(animal as G.AnimalId) && !me) { setAnimal(""); setSent(false); } }, [state?.players.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (animal && taken.has(animal as G.AnimalId) && !me) {
+      if (sent) setJoinError("Esse bichinho acabou de ser escolhido por outro jogador. Escolha outro!");
+      setAnimal(""); setSent(false);
+    }
+  }, [state?.players.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Never leave the button stuck on "Entrando…": if the board ignored the join, let the player try again.
+  useEffect(() => {
+    if (!sent || me) return;
+    const t = setTimeout(() => { setSent(false); setJoinError("Não deu para entrar. Confira o nome e o bichinho e tente de novo."); }, 8000);
+    return () => clearTimeout(t);
+  }, [sent, me]);
 
   const prevBal = useRef<number | null>(null);
   useEffect(() => {
     if (!me) return;
-    if (prevBal.current !== null && me.balance !== prevBal.current) (me.balance > prevBal.current ? sfx.coin : sfx.bad)();
+    if (prevBal.current !== null && me.balance !== prevBal.current) {
+      (me.balance > prevBal.current ? sfx.coin : sfx.bad)();
+      if (me.balance > prevBal.current) navigator.vibrate?.(100);
+    }
     prevBal.current = me.balance;
   }, [me?.balance, me]);
   useEffect(() => { if (myTurn && !state?.moving && !pd) { sfx.turn(); navigator.vibrate?.(150); } }, [myTurn, state?.turn]); // eslint-disable-line react-hooks/exhaustive-deps
+  const jailed = !!me?.jail;
+  const wasJailed = useRef(false);
+  useEffect(() => { if (jailed && !wasJailed.current) navigator.vibrate?.([150, 100, 150]); wasJailed.current = jailed; }, [jailed]);
 
   const pixId = pd?.kind === "pix" ? pd.id : "";
   useEffect(() => setCamera(false), [pixId]);
@@ -81,10 +101,29 @@ function Wallet() {
   if (!state || !pid) return <Center><span className="flex flex-col items-center gap-3"><span className="animate-spin-slow text-5xl">🎲</span>Conectando à sala…</span></Center>;
 
   if (!me) {
-    if (state.phase !== "lobby") return <Center>A partida já começou.</Center>;
+    if (state.phase !== "lobby") {
+      const seats = state.players.filter((p) => !p.out);
+      return (
+        <Center>
+          <div className="w-full max-w-sm space-y-3 rounded-2xl border-4 border-border bg-card p-5 shadow-[6px_6px_0_var(--foreground)]">
+            <h1 className="font-display text-2xl text-primary">A partida já começou. Você já estava jogando?</h1>
+            <p className="font-sans text-sm text-muted-foreground">Toque no seu bichinho para voltar com o seu saldo e seus terrenos.</p>
+            <div className="grid grid-cols-2 gap-2">
+              {seats.map((p) => (
+                <button key={p.id} type="button" onClick={() => { if (window.confirm(`Você é ${p.name}?`)) { setPlayerId(p.id); setPid(p.id); } }} className="flex flex-col items-center rounded-xl border-4 border-border bg-muted p-2">
+                  <Animal id={p.animal} className="h-16 w-auto" />
+                  <span className="font-display" style={{ color: p.color }}>{p.name}</span>
+                  <span className="text-xs">Sou eu (Reconectar)</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </Center>
+      );
+    }
     return (
       <Center>
-        <form onSubmit={(e) => { e.preventDefault(); if (name.trim() && animal) { act("join", { name, animal }); setSent(true); } }} className="w-full max-w-sm space-y-3 rounded-2xl border-4 border-border bg-card p-5 shadow-[6px_6px_0_var(--foreground)]">
+        <form onSubmit={(e) => { e.preventDefault(); if (name.trim() && animal) { setJoinError(""); act("join", { name, animal }); setSent(true); } }} className="w-full max-w-sm space-y-3 rounded-2xl border-4 border-border bg-card p-5 shadow-[6px_6px_0_var(--foreground)]">
           <h1 className="font-display text-3xl text-primary">Sala {code}</h1>
           <input value={name} onChange={(e) => setName(e.target.value)} maxLength={16} placeholder="Seu nome" aria-label="Seu nome" autoComplete="nickname" className="w-full rounded-xl border-4 border-border bg-background p-3 text-xl" />
           <p className="font-display">Escolha seu bichinho</p>
@@ -92,7 +131,7 @@ function Wallet() {
             {G.ANIMALS.map((a) => {
               const off = taken.has(a.id);
               return (
-                <button type="button" key={a.id} disabled={off} onClick={() => setAnimal(a.id)}
+                <button type="button" key={a.id} disabled={off} onClick={() => { setAnimal(a.id); setJoinError(""); }}
                   className={`relative flex flex-col items-center rounded-xl border-4 p-1 transition ${animal === a.id ? "scale-105 border-border bg-secondary" : "border-transparent bg-muted"} disabled:opacity-30`}>
                   <Animal id={a.id} className={`h-20 w-auto ${animal === a.id ? "animate-bob" : ""}`} />
                   <span className="text-xs font-bold">{off ? "Ocupado" : a.name}</span>
@@ -100,6 +139,7 @@ function Wallet() {
               );
             })}
           </div>
+          {joinError && <p role="alert" className="rounded-lg bg-destructive p-2 font-sans text-sm font-bold text-destructive-foreground">{joinError}</p>}
           <button disabled={sent || !animal || !name.trim()} className={`${btn} bg-primary text-primary-foreground`}>{sent ? "Entrando…" : "Entrar na partida"}</button>
         </form>
       </Center>
@@ -161,7 +201,7 @@ function Wallet() {
             </div>
           ) : null}
           {myTurn && !pd && state.phase === "playing" && (
-            <button disabled={state.moving} onClick={() => { sfx.dice(); act("roll", { rollId: state.rollId }); }} className={`${btn} bg-primary py-5 text-2xl text-primary-foreground`}>
+            <button disabled={state.moving} onClick={() => { sfx.dice(); navigator.vibrate?.([40, 60, 40]); act("roll", { rollId: state.rollId }); }} className={`${btn} bg-primary py-5 text-2xl text-primary-foreground`}>
               {state.moving ? "Andando…" : "🎲 Jogar dados"}
             </button>
           )}
@@ -236,7 +276,7 @@ function Wallet() {
         <Card highlight>
           <p className="font-display text-xl text-destructive">⚠️ Risco de falência</p>
           <p className="mb-2">Você precisa de <b>{G.money(pd.amount)}</b> ({pd.reason}). Tem {G.money(me.balance)}.</p>
-          <p className="mb-3 text-sm text-muted-foreground">Hipoteque ou venda terrenos em "Seus bairros" abaixo e depois pague.</p>
+          <p className="mb-3 text-sm text-muted-foreground">Venda chalés, hipoteque ou negocie terrenos em "Seus bairros" abaixo e depois pague.</p>
           <div className="flex gap-2">
             <button disabled={me.balance < pd.amount} onClick={() => act("payDebt")} className={`${btn} bg-success text-success-foreground`}>Pagar dívida</button>
             <button onClick={() => act("giveUp")} className={`${btn} bg-muted`}>Declarar falência</button>
@@ -251,7 +291,7 @@ function Wallet() {
           <p className="font-display text-sm uppercase tracking-widest text-destructive">{pd.reason}</p>
           <p className="font-display text-2xl">Pague {G.money(pd.amount)}</p>
           <p className="mb-3 text-sm">para {state.players.find((p) => p.id === pd.to)?.name} · Você tem {G.money(me.balance)}</p>
-          {camera ? <PixScanner onScan={onScan} /> : (
+          {camera ? <PixScanner onScan={onScan} onClose={() => setCamera(false)} /> : (
             <button onClick={() => setCamera(true)} className={`${btn} mb-2 bg-secondary`}>📷 Ler QR code do Pix</button>
           )}
           <button onClick={() => { sfx.pix(); act("pixConfirm", { id: pd.id }); }} className={`${btn} mt-2 bg-success text-success-foreground`}>Pagar direto</button>
@@ -302,6 +342,8 @@ function Wallet() {
       {mine.length > 0 && <Neighborhoods state={state} pid={pid} balance={me.balance} act={act} onInspect={setInspect} onSell={(i) => setTrade({ give: [i] })} onTrade={(to) => !state.offer && state.phase === "playing" && setTrade({ to })} />}
 
       {state.phase !== "lobby" && !me.out && <StreetStrip state={state} playerId={pid} onPick={setInspect} />}
+      {state.phase !== "lobby" && <button onClick={() => setMap(true)} className="mx-auto min-h-12 rounded-xl px-3 text-sm font-bold text-primary underline underline-offset-4">🗺️ Ver Tabuleiro Completo</button>}
+      {map && <MiniMap state={state} onClose={() => setMap(false)} />}
       {inspect !== null && <PropertyDetails state={state} square={inspect} onClose={() => setInspect(null)} />}
 
       {pd?.kind === "scratch" && pd.playerId === pid && state.card && !state.moving && (
@@ -357,7 +399,7 @@ function Neighborhoods({ state, pid, balance, act, onSell, onInspect, onTrade }:
                 const h = G.housesAt(state, i);
                 const mort = G.isMortgaged(state, i);
                 const groupHasHouses = G.BOARD.some((x, j) => x.group === g && G.housesAt(state, j) > 0);
-                const canBuild = g < 8 && !mort && G.ownsGroup(state, pid, g) && h < G.MAX_HOUSES;
+                const canBuild = g < 8 && !mort && G.ownsGroup(state, pid, g) && h < G.MAX_HOUSES && !G.BOARD.some((x, j) => x.group === g && G.housesAt(state, j) < h) && !G.BOARD.some((x, j) => x.group === g && G.isMortgaged(state, j));
                 return (
                   <li key={i} className={`px-3 py-1.5 text-sm ${mort ? "bg-muted" : ""}`}>
                     <div className="flex items-center gap-2">
@@ -373,6 +415,11 @@ function Neighborhoods({ state, pid, balance, act, onSell, onInspect, onTrade }:
                             <button disabled={state.moving} onClick={() => act("mortgage", { square: i })} className={`${miniBtn} bg-muted`}>Hipotecar +{G.money(G.mortgageValue(i))}</button>
                             <button disabled={!!state.offer} onClick={() => onSell(i)} className={`${miniBtn} bg-accent text-accent-foreground`}>Negociar</button>
                           </>
+                        )}
+                        {h > 0 && (
+                          <button disabled={state.moving || G.BOARD.some((x, j) => x.group === g && G.housesAt(state, j) > h)} onClick={() => act("sellHouse", { square: i })} className={`${miniBtn} bg-muted`}>
+                            Vender {h >= G.MAX_HOUSES ? "resort" : "chalé"} +{G.money(G.houseSaleValue(g))}
+                          </button>
                         )}
                         {canBuild && (
                           <button disabled={state.moving || balance < G.houseCost(g)} onClick={() => act("build", { square: i })} className={`${miniBtn} bg-secondary`}>

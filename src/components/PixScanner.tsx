@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 /** Opens the rear camera and reports decoded QR text. */
-export function PixScanner({ onScan }: { onScan: (text: string) => void }) {
+export function PixScanner({ onScan, onClose }: { onScan: (text: string) => void; onClose: () => void }) {
   const video = useRef<HTMLVideoElement>(null);
   const [err, setErr] = useState("");
   useEffect(() => {
@@ -39,6 +39,7 @@ export function PixScanner({ onScan }: { onScan: (text: string) => void }) {
     <div className="relative overflow-hidden rounded-xl border-4 border-border bg-foreground">
       <video ref={video} playsInline muted className="aspect-square w-full object-cover" />
       <div className="pointer-events-none absolute inset-8 rounded-lg border-4 border-dashed border-secondary" />
+      <button type="button" onClick={onClose} className="absolute right-2 top-2 z-10 min-h-11 rounded-lg border-2 border-border bg-card px-3 text-sm font-bold">✕ Cancelar / Digitar direto</button>
       {err && <p className="absolute inset-x-0 bottom-2 text-center text-sm font-bold text-secondary">{err}</p>}
     </div>
   );

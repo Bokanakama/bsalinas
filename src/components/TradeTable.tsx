@@ -45,7 +45,7 @@ export function TradeTable({ state, pid, initialTo, initialGive, onSend, onClose
         <p className="font-display text-2xl">🤝 Mesa de Negociação</p>
         <div className="grid grid-cols-3 gap-2">
           {state.players.filter((p) => p.id !== pid && !p.out).map((p) => (
-            <button type="button" key={p.id} onClick={() => { setTo(p.id); setWant([]); }} className={`min-h-12 rounded-xl border-4 p-1 text-xs font-bold ${to === p.id ? "border-border bg-secondary" : "border-transparent bg-muted"}`}>
+            <button type="button" key={p.id} onClick={() => { setTo(p.id); setWant([]); setPayThem(""); }} className={`min-h-12 rounded-xl border-4 p-1 text-xs font-bold ${to === p.id ? "border-border bg-secondary" : "border-transparent bg-muted"}`}>
               <Animal id={p.animal} className="mx-auto h-10 w-auto" />{p.name}
             </button>
           ))}
