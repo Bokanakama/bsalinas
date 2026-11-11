@@ -473,7 +473,7 @@ export function sellHouse(s: GameState, id: string, square: number): GameState {
   if (!sq || !p || p.out || s.phase !== "playing" || s.moving || s.owners[square] !== id) return s;
   const h = housesAt(s, square);
   if (h <= 0 || BOARD.some((b, i) => b.group === sq.group && housesAt(s, i) > h)) return s;
-  const houses = { ...s.houses, [square]: h - 1 };
+  const houses: Record<string, number> = { ...s.houses, [square]: h - 1 };
   if (!houses[square]) delete houses[square];
   const value = houseSaleValue(sq.group!);
   const next = move({ ...s, houses }, BANK, id, value, `Venda de chalé ${sq.name}`);
