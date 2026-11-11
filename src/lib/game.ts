@@ -752,16 +752,16 @@ export function autoResolve(s: GameState): GameState {
   return s;
 }
 /** Host: "Passar a vez". Pending decisions time out; auctions, raspadinhas and cobranças keep their own clocks. */
-export function skipTurn(s: GameState): GameState {
-  if (s.phase !== "playing" || s.moving) return s;
+export function skipTurn(s0: GameState): GameState {
+  if (s0.phase !== "playing" || s0.moving) return s0;
+  const s = patch(s0, current(s0).id, { doubles: 0 });
   const pd = s.pending;
   if (pd && (pd.kind === "buy" || pd.kind === "pix" || pd.kind === "debt")) {
     const n = autoResolve(s);
     return n.pending || n.turn !== s.turn ? n : endTurn(n);
   }
-  if (pd) return s;
-  const cur = current(s);
-  return endTurn(say(patch(s, cur.id, { doubles: 0 }), `O tabuleiro passou a vez de ${cur.name}`));
+  if (pd) return s0;
+  return endTurn(say(s, `O tabuleiro passou a vez de ${current(s).name}`));
 }
 /** Host: remove an absent player. In the lobby they just leave; in a game they go bankrupt to the bank. */
 export function kickPlayer(s: GameState, id: string): GameState {
