@@ -97,7 +97,7 @@ export function Board({ state, center, side, displayPos, focus }: { state: GameS
   
   const turnId = state.players[state.turn]?.id;
   return (
-    <div style={{ width: "min(100cqw, calc(100cqh * 16 / 9))", height: "min(100cqh, calc(100cqw * 9 / 16))", containerType: "size" }} className="relative overflow-hidden rounded-[1.6cqw] border border-border/20 bg-[var(--board-gap)] shadow-[var(--shadow-soft)]">
+    <div style={{ width: "min(100cqw, calc(100cqh * 16 / 9))", height: "min(100cqh, calc(100cqw * 3 / 4))", containerType: "size" }} className="relative overflow-hidden rounded-[1.6cqw] border border-border/20 bg-[var(--board-gap)] shadow-[var(--shadow-soft)]">
       <div
         className="grid size-full gap-[0.35cqw] p-[0.6cqw] transition-transform duration-500 ease-out"
         style={{ gridTemplateColumns: CF.map((v) => `${v}fr`).join(" "), gridTemplateRows: RF.map((v) => `${v}fr`).join(" ") }}
