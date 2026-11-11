@@ -64,7 +64,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      prune_room_actions: { Args: { _code: string }; Returns: number }
     }
     Enums: {
       [_ in never]: never
