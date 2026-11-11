@@ -450,7 +450,7 @@ function Master() {
             </div>
             {state.phase === "playing" && (
               <div className="flex flex-wrap gap-2">
-                <button onClick={() => { hostAct("skipTurn"); setPaused(false); }} className="flex-1 rounded-xl border-4 border-border bg-secondary py-2 font-display">⏭️ Passar a vez de {cur?.name}</button>
+                <button disabled={state.moving || (!!pd && !["buy", "pix", "debt"].includes(pd.kind))} onClick={() => { hostAct("skipTurn"); setPaused(false); }} className="flex-1 rounded-xl border-4 border-border bg-secondary py-2 font-display">⏭️ Passar a vez de {cur?.name}</button>
                 <button onClick={() => { setHostFor(cur?.id ?? null); setPaused(false); }} className="flex-1 rounded-xl border-4 border-border bg-destructive py-2 font-display text-destructive-foreground">🚫 Desconectar jogador…</button>
               </div>
             )}
@@ -465,7 +465,7 @@ function Master() {
       {hostFor && (() => {
         const p = state.players.find((x) => x.id === hostFor);
         if (!p) return null;
-        const isTurn = state.phase === "playing" && G.current(state).id === p.id;
+        const isTurn = state.phase === "playing" && G.current(state).id === p.id && !state.moving && (!state.pending || ["buy", "pix", "debt"].includes(state.pending.kind));
         return (
           <div className="absolute inset-0 z-40 flex items-center justify-center bg-foreground/60 p-6" onClick={() => setHostFor(null)}>
             <div role="dialog" aria-label={`Opções de ${p.name}`} onClick={(e) => e.stopPropagation()} className="flex w-full max-w-md flex-col gap-3 rounded-2xl border-4 border-border bg-card p-5 shadow-[8px_8px_0_var(--foreground)]">
