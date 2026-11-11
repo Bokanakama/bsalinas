@@ -417,7 +417,7 @@ function Neighborhoods({ state, pid, balance, act, onSell, onInspect, onTrade }:
                           </>
                         )}
                         {h > 0 && (
-                          <button disabled={state.moving || G.BOARD.some((x, j) => x.group === g && G.housesAt(state, j) > h)} onClick={() => act("sellHouse", { square: i })} className={`${miniBtn} bg-muted`}>
+                          <button disabled={state.moving || G.BOARD.some((x, j) => x.group === g && G.housesAt(state, j) > h)} onClick={() => { if (window.confirm(`Vender ${h >= G.MAX_HOUSES ? "o resort" : "um chalé"} de ${G.BOARD[i]!.name} por ${G.money(G.houseSaleValue(g))}?`)) act("sellHouse", { square: i }); }} className="min-h-8 rounded-lg bg-muted px-2 py-1 text-xs font-semibold disabled:opacity-40">
                             Vender {h >= G.MAX_HOUSES ? "resort" : "chalé"} +{G.money(G.houseSaleValue(g))}
                           </button>
                         )}
