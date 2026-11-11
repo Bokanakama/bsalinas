@@ -218,7 +218,8 @@ function Master() {
 
   // Turn timer: 60 s to roll, buy, pay rent or settle a debt; then the bank acts for the player.
   const tpd = state?.pending;
-  const timed = state?.phase === "playing" && !state.moving && !paused && (!tpd || tpd.kind === "buy" || tpd.kind === "pix" || tpd.kind === "debt");
+  // Turn timer disabled by request: players have unlimited time; the host can still skip or kick.
+  const timed = false && !!tpd;
   const turnKey = timed ? `${state!.turn}|${state!.rollId}|${tpd?.kind ?? ""}|${tpd?.kind === "pix" ? tpd.id : ""}` : "";
   const [deadline, setDeadline] = useState(0);
   const [clock, setClock] = useState(0);
