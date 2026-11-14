@@ -23,3 +23,8 @@
 
 - [x] Redesenhar somente / com capas leves e identidade de portal.
 - [x] Verificar celular, teclado, destinos dos dois cartões e preservação de /salinas.
+
+## Segurança das salas
+
+- [x] Fechar leitura pública de salas e ações; permitir gravação do estado e leitura de ações apenas ao mestre com credencial da sala.
+- [x] Verificar negação de acesso indevido, criação, entrada de jogador e recarregamento do mestre; salas antigas precisam ser recriadas.

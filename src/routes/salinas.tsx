@@ -1,9 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { makeCode } from "@/lib/room";
-import { newState } from "@/lib/game";
-import type { Json } from "@/integrations/supabase/types";
+import { createRoom, makeCode } from "@/lib/room";
 
 export const Route = createFileRoute("/salinas")({
   head: () => ({
@@ -27,19 +24,16 @@ function Home() {
 
   async function create() {
     setBusy(true); setErr("");
-    // Retry with a fresh code if the random one is already taken by another room.
-    let c = makeCode();
-    let { error } = await supabase.from("rooms").insert({ code: c, state: newState() as unknown as Json });
-    for (let i = 0; error?.code === "23505" && i < 4; i++) {
-      c = makeCode();
-      ({ error } = await supabase.from("rooms").insert({ code: c, state: newState() as unknown as Json }));
-    }
-    setBusy(false);
-    if (error) setErr("Não deu para criar a sala. Verifique a internet e tente de novo.");
-    else {
-      localStorage.setItem(`boro-master-${c}`, "1");
+    let c = "";
+    try {
+      for (let attempt = 0; attempt < 4; attempt++) {
+        c = makeCode();
+        try { await createRoom(c); break; }
+        catch (error) { if (!(error instanceof Error) || error.message !== "Código indisponível." || attempt === 3) throw error; }
+      }
       nav({ to: "/mestre/$code", params: { code: c } });
-    }
+    } catch { setErr("Não deu para criar a sala. Verifique a internet e tente de novo."); }
+    finally { setBusy(false); }
   }
 
   return (

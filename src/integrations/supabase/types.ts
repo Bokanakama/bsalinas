@@ -41,18 +41,47 @@ export type Database = {
         }
         Relationships: []
       }
+      room_access: {
+        Row: {
+          access_role: string
+          room_code: string
+          token_hash: string
+        }
+        Insert: {
+          access_role: string
+          room_code: string
+          token_hash: string
+        }
+        Update: {
+          access_role?: string
+          room_code?: string
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_access_room_code_fkey"
+            columns: ["room_code"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
       rooms: {
         Row: {
+          channel_id: string | null
           code: string
           state: Json
           updated_at: string
         }
         Insert: {
+          channel_id?: string | null
           code: string
           state?: Json
           updated_at?: string
         }
         Update: {
+          channel_id?: string | null
           code?: string
           state?: Json
           updated_at?: string
@@ -65,6 +94,10 @@ export type Database = {
     }
     Functions: {
       prune_room_actions: { Args: { _code: string }; Returns: number }
+      room_gateway: {
+        Args: { _code: string; _data?: Json; _op: string; _token: string }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never

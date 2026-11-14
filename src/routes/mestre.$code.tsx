@@ -1,8 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { supabase } from "@/integrations/supabase/client";
-import { publishState, joinRoomChannel } from "@/lib/room";
+import { publishState, joinRoomChannel, ensureRoomAccess, accessRoom } from "@/lib/room";
 import * as G from "@/lib/game";
 import { Board } from "@/components/Board";
 import { DicePair } from "@/components/Dice";
@@ -48,7 +47,7 @@ function Master() {
   const commit = useCallback((next: G.GameState) => {
     ref.current = next;
     setState(next);
-    void publishState(code, next);
+    void publishState(code, next).catch(() => console.error("Não deu para salvar a sala."));
   }, [code]);
 
   const handle = useCallback(async (a: ActionRow) => {
@@ -125,41 +124,38 @@ function Master() {
 
   useEffect(() => {
     setOrigin(window.location.origin);
-    let ch: ReturnType<typeof supabase.channel> | null = null;
-    let live = false, tick = 0;
-    const room = joinRoomChannel(code);
-    room.ch.on("broadcast", { event: "player_action" }, ({ payload }) => {
-      const a = payload as ActionRow;
-      if (a?.id && (payload as { room_code?: string }).room_code === code && ref.current) enqueue(a);
-    });
-    room.subscribe();
+    let alive = true, fetching = false;
+    let room: ReturnType<typeof joinRoomChannel> | undefined;
     (async () => {
-      const { data } = await supabase.from("rooms").select("state").eq("code", code).maybeSingle();
+      if (!await ensureRoomAccess(code, true)) { if (alive) setMissing(true); return; }
+      if (!alive) return;
+      const data = await accessRoom(code, "read", {}, true) as { state: G.GameState } | null;
       if (!data) return setMissing(true);
-      let s = data.state as unknown as G.GameState;
+      let s = data.state;
       if (s.cityEvent?.kind === "padroeira" && s.cityEvent.expiresAt === undefined) {
         s = { ...s, cityEvent: G.activeCityEvent(s) ? { ...s.cityEvent, expiresAt: Date.now() + G.CITY_EVENT_MS } : null };
         commit(s);
       }
+      if (!alive) return;
       ref.current = s; setState(s);
       setDisplayPos(Object.fromEntries(s.players.map((p) => [p.id, p.pos])));
-      ch = supabase
-        .channel(`actions-${code}-${Math.random().toString(36).slice(2)}`)
-        .on("postgres_changes", { event: "INSERT", schema: "public", table: "actions", filter: `room_code=eq.${code}` }, (pl) => enqueue(pl.new as ActionRow))
-        .subscribe((st) => { live = st === "SUBSCRIBED"; if (live) void catchUp(); });
+      room = joinRoomChannel(code);
+      room.ch.on("broadcast", { event: "player_action" }, () => void catchUp());
+      room.subscribe(() => void catchUp());
       await catchUp();
-    })();
-    // Safety net: if the live connection drops, pick up any missed actions.
+    })().catch(() => { if (alive) setMissing(true); });
     async function catchUp() {
-      let q = supabase.from("actions").select("*").eq("room_code", code).order("created_at");
-      const since = ref.current?.lastActionAt;
-      if (since) q = q.gte("created_at", since);
-      const { data: backlog } = await q.limit(200);
-      (backlog as ActionRow[] | null)?.forEach((a) => { if (!seen.current.has(a.id)) enqueue(a); });
+      if (!alive || fetching || !ref.current) return;
+      fetching = true;
+      try {
+        const since = ref.current.lastActionAt;
+        const backlog = await accessRoom(code, "actions", since ? { since } : {}, true) as unknown as ActionRow[];
+        if (alive) backlog?.forEach((a) => { if (!seen.current.has(a.id)) enqueue(a); });
+      } catch { /* Retry on the next poll after an interrupted connection. */ }
+      finally { fetching = false; }
     }
-    // The board is the game's server: it keeps checking even when its window is in the background.
-    const poll = setInterval(() => { tick++; if (ref.current && (!live || tick % 4 === 0)) void catchUp(); }, 2000);
-    return () => { clearInterval(poll); if (ch) supabase.removeChannel(ch); room.leave(); };
+    const poll = setInterval(() => { if (ref.current) void catchUp(); }, 1500);
+    return () => { alive = false; clearInterval(poll); room?.leave(); };
   }, [code, enqueue, commit]);
 
   // The master persists the same expiry for every device, even between turns.
@@ -249,7 +245,7 @@ function Master() {
   const phase = state?.phase;
   useEffect(() => {
     if (!phase || phase === "lobby") return;
-    void supabase.rpc("prune_room_actions", { _code: code });
+    void accessRoom(code, "prune", {}, true).catch(() => {});
   }, [round, phase, code]);
   const [hostFor, setHostFor] = useState<string | null>(null);
 
@@ -277,7 +273,7 @@ function Master() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [evId]);
 
-  if (missing) return <div className="p-8 text-center font-display">Sala não encontrada. <Link to="/" className="text-primary underline">Voltar</Link></div>;
+  if (missing) return <div className="p-8 text-center font-display">Sala não encontrada ou este aparelho não tem autorização para controlar o tabuleiro. Crie uma nova sala ou volte ao aparelho que a criou. <Link to="/" className="text-primary underline">Voltar</Link></div>;
   if (!state) return <div className="azulejo flex h-dvh flex-col items-center justify-center gap-3 font-display"><span className="animate-spin-slow text-6xl">🎲</span>Montando o tabuleiro…</div>;
 
   const joinUrl = `${origin}/jogar/${code}`;

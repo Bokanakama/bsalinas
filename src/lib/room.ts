@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { GameState } from "./game";
-import type { Json } from "@/integrations/supabase/types";
+import { roomRequest } from "./room.functions";
 
 export function makeCode() {
   const L = "ABCDEFGHJKLMNPQRSTUVWXYZ";
@@ -22,6 +22,41 @@ export function setPlayerId(id: string) {
   localStorage.setItem("boro-pid", id);
 }
 
+// Credentials are issued by the server and scoped to one room and role.
+const channels = new Map<string, string>();
+const pendingAccess = new Map<string, Promise<boolean>>();
+export async function ensureRoomAccess(code: string, master = false) {
+  const key = `boro-access-${code}-${master ? "master" : "player"}`;
+  if (pendingAccess.has(key)) return pendingAccess.get(key)!;
+  const task = (async () => {
+    let token = localStorage.getItem(key);
+    if (!token && master) return false;
+    if (!token) {
+      const response = await roomRequest({ data: { op: "join", code } });
+      if (!response.token) return false;
+      token = response.token;
+      localStorage.setItem(key, token);
+    }
+    const response = await roomRequest({ data: { op: "read", code, token } });
+    const row = response.result as { channel?: string } | null;
+    if (!row?.channel) return false;
+    channels.set(code, row.channel);
+    return true;
+  })().catch(() => false).finally(() => pendingAccess.delete(key));
+  pendingAccess.set(key, task);
+  return task;
+}
+export async function createRoom(code: string) {
+  const response = await roomRequest({ data: { op: "create", code } });
+  if (!response.token) throw new Error("Não deu para criar a sala.");
+  localStorage.setItem(`boro-access-${code}-master`, response.token);
+}
+export async function accessRoom(code: string, op: "read" | "write" | "actions" | "send" | "prune", payload: Record<string, unknown> = {}, master = false) {
+  const token = localStorage.getItem(`boro-access-${code}-${master ? "master" : "player"}`);
+  if (!token) throw new Error("Acesso à sala não autorizado.");
+  return (await roomRequest({ data: { op, code, token, payload } })).result;
+}
+
 // Saves are chained so an older state can never land after a newer one; bursts collapse to the latest.
 let saving: Promise<void> = Promise.resolve();
 const latest = new Map<string, GameState>();
@@ -29,28 +64,27 @@ export function saveState(code: string, state: GameState) {
   const first = !latest.has(code);
   latest.set(code, state);
   if (!first) return saving;
-  saving = saving.then(async () => {
+  saving = saving.catch(() => {}).then(async () => {
     const s = latest.get(code)!;
     latest.delete(code);
-    const { error } = await supabase.from("rooms").update({ state: s as unknown as Json, updated_at: new Date().toISOString() }).eq("code", code);
-    if (error) console.error("Falha ao salvar a sala", error.message);
+    await accessRoom(code, "write", { state: s }, true);
+    broadcast(code, "room_state", {});
   });
   return saving;
 }
-/** Master: push state to phones right away, then persist. */
 export function publishState(code: string, state: GameState) {
-  broadcast(code, "room_state", { state, at: new Date().toISOString() });
   return saveState(code, state);
 }
 
-
-/** One shared broadcast room per game: phones send actions, the master sends state, straight over the socket. */
+// Broadcasts are doorbells only: always fetch authorized data before applying it.
 type Ch = ReturnType<typeof supabase.channel>;
 const rooms = new Map<string, { ch: Ch; refs: number; ready: boolean }>();
 export function joinRoomChannel(code: string) {
+  const channel = channels.get(code);
+  if (!channel) throw new Error("Acesso à sala não autorizado.");
   let r = rooms.get(code);
   if (!r) {
-    const ch = supabase.channel(`room:${code}`, { config: { broadcast: { self: false } } });
+    const ch = supabase.channel(`room:${channel}`, { config: { broadcast: { self: false } } });
     r = { ch, refs: 0, ready: false };
     rooms.set(code, r);
   }
@@ -71,54 +105,45 @@ export function broadcast(code: string, event: string, payload: Record<string, u
 
 export async function sendAction(code: string, playerId: string, type: string, payload: Record<string, unknown> = {}) {
   const id = crypto.randomUUID();
-  // Instant path; the database insert below (same id) is the reliable fallback and the master dedupes.
-  broadcast(code, "player_action", { id, room_code: code, player_id: playerId, type, payload, created_at: "" });
   for (let attempt = 0; attempt < 3; attempt++) {
-    const { error } = await supabase.from("actions").insert({ id, room_code: code, player_id: playerId, type, payload: payload as Json });
-    if (!error) return true;
-    console.error("Falha ao enviar ação", type, error.message);
-    await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
+    try {
+      await accessRoom(code, "send", { id, player_id: playerId, type, payload });
+      broadcast(code, "player_action", {});
+      return true;
+    } catch { await new Promise((r) => setTimeout(r, 400 * (attempt + 1))); }
   }
   return false;
 }
 
-/** Live room state for player phones. Realtime plus a polling safety net, so a dropped connection never freezes a phone. */
+/** Live state is always read through the credential-checked gateway. */
 export function useRoomState(code: string) {
   const [state, setState] = useState<GameState | null>(null);
   const [missing, setMissing] = useState(false);
   useEffect(() => {
-    let alive = true;
-    let stamp = ""; // updated_at of the newest state applied
-    let live = false, tick = 0;
-    const apply = (s: GameState, at: string) => {
-      if (!alive || (stamp && at && at < stamp)) return;
-      if (at) stamp = at;
-      setState(s);
-    };
+    let alive = true, fetching = false;
+    let stamp = "";
+    let room: ReturnType<typeof joinRoomChannel> | undefined;
     const refetch = async () => {
-      const { data, error } = await supabase.from("rooms").select("state, updated_at").eq("code", code).maybeSingle();
-      if (!alive) return;
-      if (error) return console.error("Falha ao carregar a sala", error.message);
-      if (!data) return setMissing(true);
-      if (data.updated_at !== stamp) apply(data.state as unknown as GameState, data.updated_at);
+      if (fetching || !alive) return;
+      fetching = true;
+      try {
+        const data = await accessRoom(code, "read") as { state: GameState; updated_at: string } | null;
+        if (!alive) return;
+        if (!data) { setMissing(true); return; }
+        if (data.updated_at >= stamp) { stamp = data.updated_at; setState(data.state); }
+      } catch { /* Keep the last confirmed state while offline. */ }
+      finally { fetching = false; }
     };
-    void refetch();
-    const room = joinRoomChannel(code);
-    room.ch.on("broadcast", { event: "room_state" }, ({ payload }) => {
-      const m = payload as { state: GameState; at: string };
-      if (m?.state) apply(m.state, m.at);
-    });
-    room.subscribe();
-    const ch = supabase
-      .channel(`room-${code}-${Math.random().toString(36).slice(2)}`)
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "rooms", filter: `code=eq.${code}` }, (p) => {
-        const row = p.new as { state: GameState; updated_at: string };
-        apply(row.state, row.updated_at);
-      })
-      .subscribe((status) => { live = status === "SUBSCRIBED"; if (live) void refetch(); });
-    // Poll fast only while realtime is down; otherwise a light check every 10s, skipped in background tabs.
-    const poll = setInterval(() => { tick++; if (document.visibilityState === "visible" && (!live || tick % 4 === 0)) void refetch(); }, 2500);
-    const wake = () => { if (document.visibilityState === "visible") void refetch(); };
+    void (async () => {
+      if (!await ensureRoomAccess(code)) { if (alive) setMissing(true); return; }
+      if (!alive) return;
+      room = joinRoomChannel(code);
+      room.ch.on("broadcast", { event: "room_state" }, () => void refetch());
+      room.subscribe(() => void refetch());
+      await refetch();
+    })();
+    const poll = setInterval(() => { if (document.visibilityState === "visible" && channels.has(code)) void refetch(); }, 1500);
+    const wake = () => { if (document.visibilityState === "visible" && channels.has(code)) void refetch(); };
     document.addEventListener("visibilitychange", wake);
     window.addEventListener("online", wake);
     window.addEventListener("focus", wake);
@@ -128,8 +153,7 @@ export function useRoomState(code: string) {
       document.removeEventListener("visibilitychange", wake);
       window.removeEventListener("online", wake);
       window.removeEventListener("focus", wake);
-      supabase.removeChannel(ch);
-      room.leave();
+      room?.leave();
     };
   }, [code]);
   return { state, missing };

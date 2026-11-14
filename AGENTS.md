@@ -34,3 +34,4 @@ use the editor.
 - HTTP endpoints are real file routes under src/routes/api/ (external callers under api/public/) exporting createFileRoute with server.handlers; a plain exported `Route` object breaks the generated route tree and 500s every page.
 - Turn timeouts and host buttons (skip/kick) are synthetic actions enqueued on the master's single action queue; their rules are pure functions in game.ts — keeps one ordered writer.
 - City-selector theme overrides stay scoped to .city-portal; this isolates portal styling from all game pages.
+- Room data is accessed through roomRequest and the capability-checking room_gateway RPC; direct table grants are service-only, master credentials never enter participant responses, and broadcasts are doorbells rather than trusted state or actions.

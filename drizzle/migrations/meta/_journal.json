@@ -15,6 +15,13 @@
       "when": 1794363912626,
       "tag": "0001_prune_room_actions",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794663834286,
+      "tag": "0002_secure_room_capability_access",
+      "breakpoints": true
     }
   ]
 }
