@@ -1,10 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { QRCodeSVG } from "qrcode.react";
 import { getPlayerId, sendAction, setPlayerId, useRoomState } from "@/lib/room";
 import * as G from "@/lib/game";
 import { DicePair } from "@/components/Dice";
-import { PixScanner } from "@/components/PixScanner";
+import { Button } from "@/components/ui/button";
+import { paymentText } from "@/lib/payment-text";
 import { Animal } from "@/components/Animal";
 import { TransferShow } from "@/components/TransferShow";
 import { sfx } from "@/lib/sfx";
@@ -38,7 +38,6 @@ function Wallet() {
   const [name, setName] = useState("");
   const [animal, setAnimal] = useState("");
   const [sent, setSent] = useState(false);
-  const [camera, setCamera] = useState(false);
   const [trade, setTrade] = useState<{ to?: string; give?: number[] } | null>(null);
   const [now, setNow] = useState(0);
   const [inspect, setInspect] = useState<number | null>(null);
@@ -87,15 +86,6 @@ function Wallet() {
   const jailed = !!me?.jail;
   const wasJailed = useRef(false);
   useEffect(() => { if (jailed && !wasJailed.current) navigator.vibrate?.([150, 100, 150]); wasJailed.current = jailed; }, [jailed]);
-
-  const pixId = pd?.kind === "pix" ? pd.id : "";
-  useEffect(() => setCamera(false), [pixId]);
-  const onScan = useCallback((text: string) => {
-    try {
-      const d = JSON.parse(text);
-      if (d.pix === pixId) { sfx.pix(); act("pixConfirm", { id: pixId }); }
-    } catch { /* not ours */ }
-  }, [pixId, act]);
 
   if (missing) return <Center>Sala {code} não existe. <Link to="/" className="text-primary underline">Voltar</Link></Center>;
   if (!state || !pid) return <Center><span className="flex flex-col items-center gap-3"><span className="animate-spin-slow text-5xl">🎲</span>Conectando à sala…</span></Center>;
@@ -205,7 +195,7 @@ function Wallet() {
               {state.moving ? "Andando…" : "🎲 Jogar dados"}
             </button>
           )}
-          {state.event && <p key={state.event.id} className="animate-pop mt-2 text-sm font-bold">{state.event.text}</p>}
+          {state.event && <p key={state.event.id} className="animate-pop mt-2 text-sm font-bold">{paymentText(state.event.text)}</p>}
         </Card>
       )}
 
@@ -257,13 +247,13 @@ function Wallet() {
 
       {pd?.kind === "collect" && pd.targetId === pid && (
         <Card highlight>
-          <p className="font-display text-xl">🎉 {pd.reason}</p>
+          <p className="font-display text-xl">🎉 {paymentText(pd.reason)}</p>
           <p className="text-sm">Aguardando os jogadores enviarem {G.money(pd.amount)}… ({pd.paid.length} de {pd.paid.length + G.collectPending(state).length} enviados)</p>
         </Card>
       )}
       {pd?.kind === "collect" && pd.targetId !== pid && !me.out && (
         <Card highlight={!pd.paid.includes(pid)}>
-          <p className="font-display text-lg">🎟️ {state.players.find((p) => p.id === pd.targetId)?.name} tirou: {pd.reason}</p>
+          <p className="font-display text-lg">🎟️ {state.players.find((p) => p.id === pd.targetId)?.name} tirou: {paymentText(pd.reason)}</p>
           {pd.paid.includes(pid) ? (
             <p className="mt-2 font-display text-success">✓ {G.money(pd.amount)} enviado!</p>
           ) : (
@@ -288,23 +278,19 @@ function Wallet() {
       )}
       {iPay && pd?.kind === "pix" && (
         <Card highlight>
-          <p className="font-display text-sm uppercase tracking-widest text-destructive">{pd.reason}</p>
+          <p className="font-display text-sm uppercase tracking-widest text-destructive">{paymentText(pd.reason)}</p>
           <p className="font-display text-2xl">Pague {G.money(pd.amount)}</p>
           <p className="mb-3 text-sm">para {state.players.find((p) => p.id === pd.to)?.name} · Você tem {G.money(me.balance)}</p>
-          {camera ? <PixScanner onScan={onScan} onClose={() => setCamera(false)} /> : (
-            <button onClick={() => setCamera(true)} className={`${btn} mb-2 bg-secondary`}>📷 Ler QR code do Pix</button>
-          )}
-          <button onClick={() => { sfx.pix(); act("pixConfirm", { id: pd.id }); }} className={`${btn} mt-2 bg-success text-success-foreground`}>Pagar direto</button>
-          {pd.reason === "Pix" && <button onClick={() => act("pixCancel")} className={`${btn} mt-2 bg-muted text-base`}>Cancelar</button>}
+          <Button onClick={() => { sfx.pix(); act("pixConfirm", { id: pd.id }); }} className={`${btn} mt-2 h-auto whitespace-normal bg-success text-success-foreground hover:bg-success/90`}>Confirmar pagamento de {G.money(pd.amount)}</Button>
+          {pd.reason === "Pix" && <Button variant="secondary" onClick={() => act("pixCancel")} className={`${btn} mt-2 h-auto bg-muted text-base`}>Cancelar</Button>}
         </Card>
       )}
       {iReceive && pd?.kind === "pix" && (
         <Card highlight>
           <p className="font-display text-sm uppercase tracking-widest text-success">Você vai receber</p>
           <p className="font-display text-3xl">{G.money(pd.amount)}</p>
-          <p className="mb-3 text-sm">de {state.players.find((p) => p.id === pd.from)?.name} · {pd.reason}</p>
-          <div className="mx-auto w-fit rounded-xl bg-card p-2"><QRCodeSVG value={JSON.stringify({ pix: pd.id })} size={200} /></div>
-          <p className="mt-2 text-xs text-muted-foreground">Mostre este código para quem vai pagar.</p>
+          <p className="mb-3 text-sm">de {state.players.find((p) => p.id === pd.from)?.name} · {paymentText(pd.reason)}</p>
+          <p role="status" className="mt-2 text-sm text-muted-foreground">Aguardando confirmação do pagamento…</p>
         </Card>
       )}
       {pd?.kind === "pix" && !iPay && !iReceive && (
@@ -347,7 +333,7 @@ function Wallet() {
       {inspect !== null && <PropertyDetails state={state} square={inspect} onClose={() => setInspect(null)} />}
 
       {pd?.kind === "scratch" && pd.playerId === pid && state.card && !state.moving && (
-        <ScratchCard key={state.card.id} text={state.card.text} good={state.card.good} onDone={() => act("scratch")} />
+        <ScratchCard key={state.card.id} text={paymentText(state.card.text)} good={state.card.good} onDone={() => act("scratch")} />
       )}
       {trade && state.phase === "playing" && (
         <TradeTable state={state} pid={pid} initialTo={trade.to} initialGive={trade.give} onClose={() => setTrade(null)} onSend={(p) => { act("trade", p); setTrade(null); }} />

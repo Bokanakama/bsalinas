@@ -35,3 +35,4 @@ use the editor.
 - Turn timeouts and host buttons (skip/kick) are synthetic actions enqueued on the master's single action queue; their rules are pure functions in game.ts — keeps one ordered writer.
 - City-selector theme overrides stay scoped to .city-portal; this isolates portal styling from all game pages.
 - Room data is accessed through roomRequest and the capability-checking room_gateway RPC; direct table grants are service-only, master credentials never enter participant responses, and broadcasts are doorbells rather than trusted state or actions.
+- Render legacy payment wording through paymentText without modifying stored state or action names; this preserves existing room compatibility while keeping payments entirely in-game.

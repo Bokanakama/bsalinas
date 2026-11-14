@@ -9,6 +9,7 @@ import { music, sfx } from "@/lib/sfx";
 import { Animal } from "@/components/Animal";
 import { TransferShow } from "@/components/TransferShow";
 import { Gazette, MoneyRain, ScratchingBanner, TitleInfo } from "@/components/GameInfo";
+import { paymentText } from "@/lib/payment-text";
 
 export const Route = createFileRoute("/mestre/$code")({
   head: ({ params }) => ({
@@ -259,7 +260,7 @@ function Master() {
     if (!state?.event) return;
     if (state.event.tone === "good") sfx.coin(); else if (state.event.tone === "bad") sfx.bad();
     // Narração sutil: só notícias da cidade, Sorte/Revés e o vencedor.
-    const t = state.event.text;
+    const t = paymentText(state.event.text);
     const line = state.phase === "over" ? t
       : t.includes("ganhou o cartão Saia Livre") ? t
       : state.cityEvent && t.includes(state.cityEvent.text) ? state.cityEvent.text
@@ -378,13 +379,13 @@ function Master() {
         <ScratchingBanner state={state} className="text-[4.7cqw]" />
         {pd?.kind === "pix" && (
           <div className="animate-pop rounded-xl border-4 border-border bg-accent px-4 py-2 font-display text-accent-foreground">
-            <p className="text-[3.6cqw] uppercase">{rentInfo?.sq ? `Aluguel · ${rentInfo.sq.name}` : "Pix"}{rentInfo?.doubled ? " · cor completa ×2" : ""}</p>
+            <p className="text-[3.6cqw] uppercase">{rentInfo?.sq ? `Aluguel · ${rentInfo.sq.name}` : "Transferência"}{rentInfo?.doubled ? " · cor completa ×2" : ""}</p>
             <p className="text-[6.1cqw] leading-tight">{nameOf(pd.from)} paga {G.money(pd.amount)} a {nameOf(pd.to)}</p>
-            <p className="text-[3.2cqw] opacity-80">Aguardando pagamento no celular…</p>
+            <p className="text-[3.2cqw] opacity-80">Aguardando confirmação no celular…</p>
           </div>
         )}
-        {state.card && state.event?.text.includes(state.card.text) && !pd && <p className={`animate-pop rounded-xl border-4 border-border px-4 py-2 font-display text-[4.7cqw] ${state.card.good ? "bg-success text-success-foreground" : "bg-destructive text-destructive-foreground"}`}>🎟️ {nameOf(state.card.playerId)} raspou: {state.card.text}</p>}
-        {state.event && !pd && <p key={state.event.id} className={`animate-pop max-w-[90%] text-[4.3cqw] font-bold ${state.event.tone === "bad" ? "text-destructive" : state.event.tone === "good" ? "text-success" : ""}`}>{state.event.text}</p>}
+        {state.card && state.event?.text.includes(state.card.text) && !pd && <p className={`animate-pop rounded-xl border-4 border-border px-4 py-2 font-display text-[4.7cqw] ${state.card.good ? "bg-success text-success-foreground" : "bg-destructive text-destructive-foreground"}`}>🎟️ {nameOf(state.card.playerId)} raspou: {paymentText(state.card.text)}</p>}
+        {state.event && !pd && <p key={state.event.id} className={`animate-pop max-w-[90%] text-[4.3cqw] font-bold ${state.event.tone === "bad" ? "text-destructive" : state.event.tone === "good" ? "text-success" : ""}`}>{paymentText(state.event.text)}</p>}
       </>
     );
 
@@ -420,7 +421,7 @@ function Master() {
         <div className="rounded-xl bg-card p-[0.8vh] shadow-[var(--shadow-soft)]">
           <p className="font-display text-[clamp(11px,2vh,22px)] text-primary">Rodada {(state.round ?? 0) + 1}</p>
           <ul className="space-y-[0.4vh] text-[clamp(10px,1.6vh,17px)]">
-            {state.log.slice(0, 3).map((l, i) => <li key={i} className={i === 0 ? "font-bold" : "text-muted-foreground"}>{l}</li>)}
+            {state.log.slice(0, 3).map((l, i) => <li key={i} className={i === 0 ? "font-bold" : "text-muted-foreground"}>{paymentText(l)}</li>)}
           </ul>
         </div>
       )}
@@ -453,7 +454,7 @@ function Master() {
             )}
             <h3 className="font-display">Histórico</h3>
             <div className="min-h-0 flex-1 overflow-auto rounded-xl border-2 border-border p-2 text-sm">
-              {state.log.map((l, i) => <p key={i} className={i === 0 ? "font-bold" : "text-muted-foreground"}>{l}</p>)}
+              {state.log.map((l, i) => <p key={i} className={i === 0 ? "font-bold" : "text-muted-foreground"}>{paymentText(l)}</p>)}
             </div>
           </div>
         </div>

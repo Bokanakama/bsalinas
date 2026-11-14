@@ -28,3 +28,8 @@
 
 - [x] Fechar leitura pública de salas e ações; permitir gravação do estado e leitura de ações apenas ao mestre com credencial da sala.
 - [x] Verificar negação de acesso indevido, criação, entrada de jogador e recarregamento do mestre; salas antigas precisam ser recriadas.
+
+## Pagamentos no jogo Salinas
+
+- [x] Remover geração e leitura de QR de pagamento, mantendo confirmação e dados existentes; preservar QR de entrada na sala.
+- [ ] Verificar pagamentos, transferências e saldos nas carteiras e no tabuleiro.
