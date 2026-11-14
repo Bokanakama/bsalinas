@@ -1,96 +1,61 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { makeCode } from "@/lib/room";
-import { newState } from "@/lib/game";
-import type { Json } from "@/integrations/supabase/types";
+import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Banco Imobiliário Salinas — o jogo de Salinópolis no celular" },
-      { name: "description", content: "Compre a Praia do Atalaia, o Maçarico e os resorts de Salinópolis, cobre aluguel no Pix e jogue com celulares." },
-      { property: "og:title", content: "Banco Imobiliário Salinas" },
-      { property: "og:description", content: "Banco imobiliário de Salinas (PA): tabuleiro na TV, carteira Pix no celular." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
+      { title: "Jogos das Cidades — escolha sua cidade" },
+      { name: "description", content: "Escolha sua cidade e divirta-se com jogos de tabuleiro locais." },
     ],
   }),
   component: Home,
 });
 
 function Home() {
-  const nav = useNavigate();
-  const [code, setCode] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState("");
-
-  async function create() {
-    setBusy(true); setErr("");
-    // Retry with a fresh code if the random one is already taken by another room.
-    let c = makeCode();
-    let { error } = await supabase.from("rooms").insert({ code: c, state: newState() as unknown as Json });
-    for (let i = 0; error?.code === "23505" && i < 4; i++) {
-      c = makeCode();
-      ({ error } = await supabase.from("rooms").insert({ code: c, state: newState() as unknown as Json }));
-    }
-    setBusy(false);
-    if (error) setErr("Não deu para criar a sala. Verifique a internet e tente de novo.");
-    else {
-      localStorage.setItem(`boro-master-${c}`, "1");
-      nav({ to: "/mestre/$code", params: { code: c } });
-    }
-  }
-
   return (
     <main className="azulejo flex min-h-screen items-center justify-center p-4">
-      <div className="grid w-full max-w-4xl gap-6 md:grid-cols-2">
-        <section className="flex flex-col justify-center">
-          <p className="font-display text-sm uppercase tracking-widest text-accent">☀️ Veraneio em Salinópolis · PA</p>
-          <h1 className="font-display text-6xl leading-none text-primary md:text-7xl">Banco<br />Salinas</h1>
-          <p className="mt-4 text-lg leading-relaxed text-foreground">Compre a orla do Atalaia, o Maçarico e os resorts, cobre aluguel no Pix e cuide dos seus <b>B$ Borós</b>. Um celular ou TV é o tabuleiro; cada celular é uma carteira.</p>
-          <ol className="mt-6 space-y-3">
-            {[
-              ["📺", "Abra o tabuleiro na TV ou num celular deitado."],
-              ["📱", "Cada jogador lê o QR code ou digita o código da sala."],
-              ["🎲", "Escolha seu bicho e jogue os dados no seu celular."],
-            ].map(([icon, text], i) => (
-              <li key={i} className="flex items-center gap-3 rounded-xl bg-card/80 px-3 py-2 shadow-[var(--shadow-soft)]">
-                <span className="grid size-10 shrink-0 place-items-center rounded-full bg-secondary text-xl">{icon}</span>
-                <span className="text-sm font-semibold leading-snug">{text}</span>
-              </li>
-            ))}
-          </ol>
-        </section>
-        <section className="space-y-4">
-          <div className="rounded-2xl border-4 border-border bg-secondary p-5 shadow-[6px_6px_0_var(--foreground)]">
-            <h2 className="font-display text-2xl">Sou o tabuleiro</h2>
-            <p className="mb-3 text-sm">Use na TV ou num celular deitado. Ele é o banco central.</p>
-            <button disabled={busy} onClick={create} className="min-h-12 w-full rounded-xl border-4 border-border bg-primary py-3 font-display text-lg text-primary-foreground active:translate-y-1">
-              {busy ? <span className="inline-flex items-center gap-2"><span className="animate-spin-slow">🎲</span>Criando…</span> : "Criar sala"}
-            </button>
-            {err && <p role="alert" className="mt-2 text-sm font-bold text-destructive">{err}</p>}
-          </div>
-          <form
-            onSubmit={(e) => { e.preventDefault(); if (code.length === 4) nav({ to: "/jogar/$code", params: { code } }); }}
-            className="rounded-2xl border-4 border-border bg-card p-5 shadow-[6px_6px_0_var(--foreground)]"
+      <div className="w-full max-w-5xl space-y-8 py-8">
+        <header className="mx-auto max-w-2xl text-center">
+          <p className="font-display text-sm uppercase tracking-[0.25em] text-accent">🌴 Jogos feitos para jogar junto</p>
+          <h1 className="mt-3 font-display text-5xl leading-tight text-primary md:text-7xl">Escolha sua cidade</h1>
+          <p className="mt-4 text-lg text-foreground">Cada cidade tem seu próprio jogo, suas histórias e seus lugares especiais. Por onde vamos começar?</p>
+        </header>
+        <section className="grid gap-6 md:grid-cols-2">
+          <a
+            href="https://cidadeboro.lovable.app"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group overflow-hidden rounded-3xl border-4 border-border bg-card shadow-[7px_7px_0_var(--foreground)] transition-transform hover:-translate-y-1"
           >
-            <h2 className="font-display text-2xl">Sou jogador</h2>
-            <p className="mb-3 text-sm">Digite o código que aparece no tabuleiro.</p>
-            <input
-              value={code}
-              onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 4))}
-              placeholder="ABCD"
-              aria-label="Código da sala"
-              autoCapitalize="characters"
-              autoComplete="off"
-              className="mb-3 w-full rounded-xl border-4 border-border bg-background p-3 text-center font-display text-3xl tracking-[0.4em]"
-            />
-            <button disabled={code.length !== 4} className="min-h-12 w-full rounded-xl border-4 border-border bg-accent py-3 font-display text-lg text-accent-foreground disabled:opacity-40">
-              {code.length === 4 ? "Entrar na sala" : `Faltam ${4 - code.length} letra${4 - code.length > 1 ? "s" : ""}`}
-            </button>
-          </form>
+            <div className="grid min-h-64 place-items-center bg-secondary p-8 text-center">
+              <div>
+                <span className="text-7xl" aria-hidden="true">🏙️</span>
+                <p className="mt-4 font-display text-4xl text-primary">CidadeBoró</p>
+                <p className="mt-2 text-sm font-semibold text-foreground">Uma cidade cheia de diversão e surpresas</p>
+              </div>
+            </div>
+            <div className="flex items-center justify-between gap-3 p-5">
+              <span className="font-display text-xl">Visitar CidadeBoró</span>
+              <span className="text-2xl transition-transform group-hover:translate-x-1" aria-hidden="true">↗</span>
+            </div>
+          </a>
+          <a
+            href="/salinas"
+            className="group overflow-hidden rounded-3xl border-4 border-border bg-card shadow-[7px_7px_0_var(--foreground)] transition-transform hover:-translate-y-1"
+          >
+            <div className="grid min-h-64 place-items-center bg-primary/10 p-8 text-center">
+              <div>
+                <span className="text-7xl" aria-hidden="true">🌊</span>
+                <p className="mt-4 font-display text-4xl text-primary">Salinas-PA</p>
+                <p className="mt-2 text-sm font-semibold text-foreground">Sol, praias e negócios em Salinópolis</p>
+              </div>
+            </div>
+            <div className="flex items-center justify-between gap-3 p-5">
+              <span className="font-display text-xl">Jogar Salinas</span>
+              <span className="text-2xl transition-transform group-hover:translate-x-1" aria-hidden="true">→</span>
+            </div>
+          </a>
         </section>
+        <p className="text-center text-xs font-medium text-muted-foreground">Novas cidades e jogos poderão ser adicionados aqui.</p>
       </div>
     </main>
   );
