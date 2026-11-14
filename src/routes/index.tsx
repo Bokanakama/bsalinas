@@ -1,10 +1,18 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { ArrowRight, ArrowUpRight, Building2, Dice5, MapPin, Waves } from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
+import cidadeboroCover from "@/assets/joga-brasil-cidadeboro.jpg";
+import salinasCover from "@/assets/joga-brasil-salinas.jpg";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Jogos das Cidades — escolha sua cidade" },
-      { name: "description", content: "Escolha sua cidade e divirta-se com jogos de tabuleiro locais." },
+      { title: "Joga Brasil — escolha seu próximo destino" },
+      { name: "description", content: "Escolha CidadeBoró ou Salinas-PA e comece a jogar. Qual será seu próximo destino?" },
+      { property: "og:title", content: "Joga Brasil — escolha seu próximo destino" },
+      { property: "og:description", content: "Dois destinos para jogar: CidadeBoró e Salinas-PA." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: Home,
@@ -12,50 +20,51 @@ export const Route = createFileRoute("/")({
 
 function Home() {
   return (
-    <main className="azulejo flex min-h-screen items-center justify-center p-4">
-      <div className="w-full max-w-5xl space-y-8 py-8">
-        <header className="mx-auto max-w-2xl text-center">
-          <p className="font-display text-sm uppercase tracking-[0.25em] text-accent">🌴 Jogos feitos para jogar junto</p>
-          <h1 className="mt-3 font-display text-5xl leading-tight text-primary md:text-7xl">Escolha sua cidade</h1>
-          <p className="mt-4 text-lg text-foreground">Cada cidade tem seu próprio jogo, suas histórias e seus lugares especiais. Por onde vamos começar?</p>
+    <main className="city-portal min-h-screen bg-background px-4 py-7 text-foreground sm:px-8 sm:py-12">
+      <div className="mx-auto w-full max-w-5xl">
+        <header className="mb-7 flex flex-col items-center text-center sm:mb-10">
+          <div className="mb-4 flex size-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm" aria-hidden="true">
+            <Dice5 className="size-7 -rotate-12" strokeWidth={1.8} />
+          </div>
+          <h1 className="font-display text-4xl leading-tight sm:text-5xl">Joga <span className="text-primary">Brasil</span><span className="text-accent">.</span></h1>
+          <p className="mt-2 text-base text-muted-foreground sm:text-lg">Qual será seu próximo destino?</p>
+          <p className="mt-4 flex items-center gap-2 text-xs font-semibold text-muted-foreground"><span className="size-1.5 rounded-full bg-primary" aria-hidden="true" />2 jogos disponíveis</p>
         </header>
-        <section className="grid gap-6 md:grid-cols-2">
+        <section aria-label="Escolha seu jogo" className="grid gap-5 md:grid-cols-2 md:gap-7">
           <a
             href="https://cidadeboro.lovable.app"
             target="_blank"
             rel="noopener noreferrer"
-            className="group overflow-hidden rounded-3xl border-4 border-border bg-card shadow-[7px_7px_0_var(--foreground)] transition-transform hover:-translate-y-1"
+            aria-label="Jogar CidadeBoró (abre em nova aba)"
+            className="city-destination group block min-w-0 overflow-hidden rounded-2xl border border-border bg-card text-card-foreground"
           >
-            <div className="grid min-h-64 place-items-center bg-secondary p-8 text-center">
-              <div>
-                <span className="text-7xl" aria-hidden="true">🏙️</span>
-                <p className="mt-4 font-display text-4xl text-primary">CidadeBoró</p>
-                <p className="mt-2 text-sm font-semibold text-foreground">Uma cidade cheia de diversão e surpresas</p>
-              </div>
+            <div className="relative aspect-[16/9] overflow-hidden bg-muted">
+              <img src={cidadeboroCover} alt="Cidade ilustrada com casinhas coloridas, uma praça e peças de tabuleiro" width={1152} height={768} fetchPriority="high" className="h-full w-full object-cover transition-transform duration-500 motion-safe:group-hover:scale-105" />
+              <span className="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-lg bg-card/95 px-3 py-1.5 text-xs font-semibold text-primary"><Building2 className="size-3.5" aria-hidden="true" />CidadeBoró</span>
             </div>
-            <div className="flex items-center justify-between gap-3 p-5">
-              <span className="font-display text-xl">Visitar CidadeBoró</span>
-              <span className="text-2xl transition-transform group-hover:translate-x-1" aria-hidden="true">↗</span>
+            <div className="p-5 sm:p-6">
+              <h2 className="font-display text-3xl">CidadeBoró</h2>
+              <p className="mt-2 min-h-12 text-base leading-6 text-muted-foreground">Explore a cidade e descubra novas aventuras</p>
+              <span className={buttonVariants({ className: "mt-5 h-12 w-full justify-between rounded-xl px-4 text-sm font-bold group-hover:bg-primary/90" })} aria-hidden="true">JOGAR CIDADEBORÓ<ArrowUpRight className="size-5" /></span>
             </div>
           </a>
-          <a
-            href="/salinas"
-            className="group overflow-hidden rounded-3xl border-4 border-border bg-card shadow-[7px_7px_0_var(--foreground)] transition-transform hover:-translate-y-1"
+          <Link
+            to="/salinas"
+            aria-label="Jogar Salinas"
+            className="city-destination city-destination-coast group block min-w-0 overflow-hidden rounded-2xl border border-border bg-card text-card-foreground"
           >
-            <div className="grid min-h-64 place-items-center bg-primary/10 p-8 text-center">
-              <div>
-                <span className="text-7xl" aria-hidden="true">🌊</span>
-                <p className="mt-4 font-display text-4xl text-primary">Salinas-PA</p>
-                <p className="mt-2 text-sm font-semibold text-foreground">Sol, praias e negócios em Salinópolis</p>
-              </div>
+            <div className="relative aspect-[16/9] overflow-hidden bg-muted">
+              <img src={salinasCover} alt="Praia de Salinas ilustrada com mar azul, coqueiros e quiosques coloridos" width={1152} height={768} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 motion-safe:group-hover:scale-105" />
+              <span className="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-lg bg-card/95 px-3 py-1.5 text-xs font-semibold text-primary"><MapPin className="size-3.5" aria-hidden="true" />Salinópolis · PA</span>
             </div>
-            <div className="flex items-center justify-between gap-3 p-5">
-              <span className="font-display text-xl">Jogar Salinas</span>
-              <span className="text-2xl transition-transform group-hover:translate-x-1" aria-hidden="true">→</span>
+            <div className="p-5 sm:p-6">
+              <h2 className="font-display text-3xl">Salinas-PA</h2>
+              <p className="mt-2 min-h-12 text-base leading-6 text-muted-foreground">Compre terrenos, negocie e vença seus amigos!</p>
+              <span className={buttonVariants({ className: "mt-5 h-12 w-full justify-between rounded-xl px-4 text-sm font-bold group-hover:bg-primary/90" })} aria-hidden="true">JOGAR SALINAS<ArrowRight className="size-5" /></span>
             </div>
-          </a>
+          </Link>
         </section>
-        <p className="text-center text-xs font-medium text-muted-foreground">Novas cidades e jogos poderão ser adicionados aqui.</p>
+        <footer className="mt-8 flex items-center justify-center gap-2 text-center text-sm text-muted-foreground"><Waves className="size-4 text-primary" aria-hidden="true" />Mais cidades chegando em breve!</footer>
       </div>
     </main>
   );

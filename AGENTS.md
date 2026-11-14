@@ -33,3 +33,4 @@ use the editor.
 - City effects use a shared absolute expiry persisted by the master; legacy round-based events are converted on load so all devices use one deadline.
 - HTTP endpoints are real file routes under src/routes/api/ (external callers under api/public/) exporting createFileRoute with server.handlers; a plain exported `Route` object breaks the generated route tree and 500s every page.
 - Turn timeouts and host buttons (skip/kick) are synthetic actions enqueued on the master's single action queue; their rules are pure functions in game.ts — keeps one ordered writer.
+- City-selector theme overrides stay scoped to .city-portal; this isolates portal styling from all game pages.

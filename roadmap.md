@@ -18,3 +18,8 @@
 - [x] Tabuleiro não para em segundo plano; avatares sem atraso; passos 2× mais rápidos; limpeza das ações antigas.
 - [x] Rodada + últimos 3 acontecimentos na lateral; anel de foco para controle de TV; aviso de virar a tela; vibração; mapa no celular.
 - [x] Tabuleiro estica até 4:3 — sem faixas vazias em telas 16:10 / 4:3.
+
+## Página inicial de cidades
+
+- [x] Redesenhar somente / com capas leves e identidade de portal.
+- [x] Verificar celular, teclado, destinos dos dois cartões e preservação de /salinas.
