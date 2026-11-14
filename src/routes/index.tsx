@@ -7,9 +7,9 @@ import salinasCover from "@/assets/joga-brasil-salinas.jpg";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Joga Brasil — escolha seu próximo destino" },
+      { title: "Banco Boró — escolha seu próximo destino" },
       { name: "description", content: "Escolha CidadeBoró ou Salinas-PA e comece a jogar. Qual será seu próximo destino?" },
-      { property: "og:title", content: "Joga Brasil — escolha seu próximo destino" },
+      { property: "og:title", content: "Banco Boró — escolha seu próximo destino" },
       { property: "og:description", content: "Dois destinos para jogar: CidadeBoró e Salinas-PA." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -26,7 +26,7 @@ function Home() {
           <div className="mb-4 flex size-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm" aria-hidden="true">
             <Dice5 className="size-7 -rotate-12" strokeWidth={1.8} />
           </div>
-          <h1 className="font-display text-4xl leading-tight sm:text-5xl">Joga <span className="text-primary">Brasil</span><span className="text-accent">.</span></h1>
+          <h1 className="font-display text-4xl leading-tight sm:text-5xl">Banco <span className="text-primary">Boró</span><span className="text-accent">.</span></h1>
           <p className="mt-2 text-base text-muted-foreground sm:text-lg">Qual será seu próximo destino?</p>
           <p className="mt-4 flex items-center gap-2 text-xs font-semibold text-muted-foreground"><span className="size-1.5 rounded-full bg-primary" aria-hidden="true" />2 jogos disponíveis</p>
         </header>
