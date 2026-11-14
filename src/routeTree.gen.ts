@@ -50,6 +50,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/salinas': typeof SalinasRoute
   '/jogar/$code': typeof JogarCodeRoute
   '/mestre/$code': typeof MestreCodeRoute
   '/api/public/cleanup': typeof ApiPublicCleanupRoute
@@ -57,17 +58,25 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/salinas': typeof SalinasRoute
   '/jogar/$code': typeof JogarCodeRoute
   '/mestre/$code': typeof MestreCodeRoute
   '/api/public/cleanup': typeof ApiPublicCleanupRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/salinas' | '/jogar/$code' | '/mestre/$code' | '/api/public/cleanup'
+  fullPaths:
+    '/' | '/salinas' | '/jogar/$code' | '/mestre/$code' | '/api/public/cleanup'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/salinas' | '/jogar/$code' | '/mestre/$code' | '/api/public/cleanup'
+  to:
+    '/' | '/salinas' | '/jogar/$code' | '/mestre/$code' | '/api/public/cleanup'
   id:
-    '__root__' | '/' | '/salinas' | '/jogar/$code' | '/mestre/$code' | '/api/public/cleanup'
+    | '__root__'
+    | '/'
+    | '/salinas'
+    | '/jogar/$code'
+    | '/mestre/$code'
+    | '/api/public/cleanup'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
