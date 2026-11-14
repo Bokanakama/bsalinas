@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SalinasRouteImport } from './routes/salinas'
 import { Route as JogarCodeRouteImport } from './routes/jogar.$code'
 import { Route as MestreCodeRouteImport } from './routes/mestre.$code'
 import { Route as ApiPublicCleanupRouteImport } from './routes/api/public/cleanup'
@@ -17,6 +18,11 @@ import { Route as ApiPublicCleanupRouteImport } from './routes/api/public/cleanu
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SalinasRoute = SalinasRouteImport.update({
+  id: '/salinas',
+  path: '/salinas',
   getParentRoute: () => rootRouteImport,
 } as any)
 const JogarCodeRoute = JogarCodeRouteImport.update({
@@ -37,6 +43,7 @@ const ApiPublicCleanupRoute = ApiPublicCleanupRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/salinas': typeof SalinasRoute
   '/jogar/$code': typeof JogarCodeRoute
   '/mestre/$code': typeof MestreCodeRoute
   '/api/public/cleanup': typeof ApiPublicCleanupRoute
@@ -56,15 +63,16 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/jogar/$code' | '/mestre/$code' | '/api/public/cleanup'
+  fullPaths: '/' | '/salinas' | '/jogar/$code' | '/mestre/$code' | '/api/public/cleanup'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/jogar/$code' | '/mestre/$code' | '/api/public/cleanup'
+  to: '/' | '/salinas' | '/jogar/$code' | '/mestre/$code' | '/api/public/cleanup'
   id:
-    '__root__' | '/' | '/jogar/$code' | '/mestre/$code' | '/api/public/cleanup'
+    '__root__' | '/' | '/salinas' | '/jogar/$code' | '/mestre/$code' | '/api/public/cleanup'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  SalinasRoute: typeof SalinasRoute
   JogarCodeRoute: typeof JogarCodeRoute
   MestreCodeRoute: typeof MestreCodeRoute
   ApiPublicCleanupRoute: typeof ApiPublicCleanupRoute
@@ -77,6 +85,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/salinas': {
+      id: '/salinas'
+      path: '/salinas'
+      fullPath: '/salinas'
+      preLoaderRoute: typeof SalinasRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/jogar/$code': {
@@ -105,6 +120,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  SalinasRoute: SalinasRoute,
   JogarCodeRoute: JogarCodeRoute,
   MestreCodeRoute: MestreCodeRoute,
   ApiPublicCleanupRoute: ApiPublicCleanupRoute,
