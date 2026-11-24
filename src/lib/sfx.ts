@@ -50,3 +50,17 @@ export const music = {
   },
   stop() { if (timer) clearInterval(timer); timer = null; },
 };
+
+// Narração com áudios gravados (funciona em navegadores de TV sem voz do sistema).
+export type VoiceClip = "sorte" | "reves" | "dupla1" | "dupla2" | "tres_duplas" | "saia_livre" | "feriado" | "temporal" | "padroeira" | "fim";
+let current: HTMLAudioElement | null = null;
+export const voice = {
+  play(clip: VoiceClip) {
+    if (typeof window === "undefined") return;
+    current?.pause();
+    current = new Audio(`/audio/${clip}.mp3`);
+    current.volume = 0.8;
+    void current.play().catch(() => {});
+  },
+  stop() { current?.pause(); current = null; },
+};

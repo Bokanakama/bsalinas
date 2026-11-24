@@ -5,7 +5,7 @@ import { publishState, joinRoomChannel, ensureRoomAccess, accessRoom } from "@/l
 import * as G from "@/lib/game";
 import { Board } from "@/components/Board";
 import { DicePair } from "@/components/Dice";
-import { music, sfx } from "@/lib/sfx";
+import { music, sfx, voice, type VoiceClip } from "@/lib/sfx";
 import { Animal } from "@/components/Animal";
 import { TransferShow } from "@/components/TransferShow";
 import { Gazette, MoneyRain, ScratchingBanner, TitleInfo } from "@/components/GameInfo";
@@ -35,9 +35,9 @@ function Master() {
   const [origin, setOrigin] = useState("");
   const [focus, setFocus] = useState<number | null>(null);
   const [paused, setPaused] = useState(false);
-  const [voice, setVoice] = useState(true);
+  const [voiceOn, setVoice] = useState(true);
   const voiceRef = useRef(true);
-  voiceRef.current = voice;
+  voiceRef.current = voiceOn;
   const [song, setSong] = useState(false);
   const [now, setNow] = useState(0);
   useEffect(() => () => music.stop(), []);
@@ -86,19 +86,14 @@ function Master() {
         const d1 = 1 + Math.floor(Math.random() * 6), d2 = 1 + Math.floor(Math.random() * 6);
         const rid = (p as { rollId?: unknown }).rollId; const seenRoll = typeof rid === "number" ? rid : undefined;
         s = G.roll(s, a.player_id, d1, d2, seenRoll);
-        if (s !== before && !s.moving && d1 === d2 && voiceRef.current && "speechSynthesis" in window && s.players.find((x) => x.id === a.player_id)?.pos === G.JAIL) {
-          const u = new SpeechSynthesisUtterance(`Três duplas seguidas! ${s.players.find((x) => x.id === a.player_id)?.name ?? ""} foi para a Delegacia!`);
-          u.lang = "pt-BR"; u.volume = 0.55; window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
-        }
+        if (s !== before && !s.moving && d1 === d2 && voiceRef.current && s.players.find((x) => x.id === a.player_id)?.pos === G.JAIL) voice.play("tres_duplas");
         if (s === before) break;
         if (!s.moving) { sfx.dice(); break; }
         commit(s);
         sfx.dice();
-        if (d1 === d2 && !s.players.find((x) => x.id === a.player_id)?.jail && voiceRef.current && "speechSynthesis" in window) {
+        if (d1 === d2 && !s.players.find((x) => x.id === a.player_id)?.jail && voiceRef.current) {
           const dn = s.players.find((x) => x.id === a.player_id)?.doubles ?? 1;
-          const u = new SpeechSynthesisUtterance(`Dupla ${dn} de 2! ${s.players.find((x) => x.id === a.player_id)?.name ?? ""} joga novamente!${dn >= 2 ? " Cuidado: a terceira dupla vai para a Delegacia!" : ""}`);
-          u.lang = "pt-BR"; u.volume = 0.55;
-          window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
+          voice.play(dn >= 2 ? "dupla2" : "dupla1");
         }
         await new Promise((r) => setTimeout(r, 700));
         const from = before.players.find((x) => x.id === a.player_id)!.pos;
@@ -261,16 +256,12 @@ function Master() {
     if (state.event.tone === "good") sfx.coin(); else if (state.event.tone === "bad") sfx.bad();
     // Narração sutil: só notícias da cidade, Sorte/Revés e o vencedor.
     const t = paymentText(state.event.text);
-    const line = state.phase === "over" ? t
-      : t.includes("ganhou o cartão Saia Livre") ? t
-      : state.cityEvent && t.includes(state.cityEvent.text) ? state.cityEvent.text
-      : state.card && t.includes(state.card.text) ? (state.card.good ? "Sorte!" : "Revés!")
+    const clip: VoiceClip | null = state.phase === "over" ? "fim"
+      : t.includes("ganhou o cartão Saia Livre") ? "saia_livre"
+      : state.cityEvent && t.includes(state.cityEvent.text) ? state.cityEvent.kind
+      : state.card && t.includes(state.card.text) ? (state.card.good ? "sorte" : "reves")
       : null;
-    if (voice && line && "speechSynthesis" in window) {
-      const u = new SpeechSynthesisUtterance(line.replace(/B\$/g, ""));
-      u.lang = "pt-BR"; u.rate = 1; u.volume = 0.55; u.pitch = 1.05;
-      window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
-    }
+    if (voiceOn && clip) voice.play(clip);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [evId]);
 
@@ -443,7 +434,7 @@ function Master() {
               <button onClick={() => setPaused(false)} className="flex-1 rounded-xl border-4 border-border bg-primary py-2 font-display text-primary-foreground">Continuar</button>
               <button onClick={fullscreen} className="flex-1 rounded-xl border-4 border-border bg-secondary py-2 font-display">Tela cheia</button>
               <button onClick={() => { if (song) music.stop(); else music.start(); setSong(!song); }} className="flex-1 rounded-xl border-4 border-border bg-success py-2 font-display text-success-foreground">{song ? "🎵 Música" : "🔇 Música"}</button>
-              <button onClick={() => { setVoice((v) => !v); window.speechSynthesis?.cancel(); }} className="flex-1 rounded-xl border-4 border-border bg-accent py-2 font-display text-accent-foreground">{voice ? "🔊 Narração" : "🔇 Narração"}</button>
+              <button onClick={() => { setVoice((v) => !v); voice.stop(); }} className="flex-1 rounded-xl border-4 border-border bg-accent py-2 font-display text-accent-foreground">{voiceOn ? "🔊 Narração" : "🔇 Narração"}</button>
               <Link to="/" className="flex-1 rounded-xl border-4 border-border bg-muted py-2 text-center font-display">Sair</Link>
             </div>
             {state.phase === "playing" && (
