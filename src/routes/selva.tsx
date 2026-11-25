@@ -3,6 +3,7 @@ import { useState } from "react";
 import { ArrowLeft, Dice5, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createRoom, makeCode } from "@/lib/room";
+import { SelvaCards } from "@/components/SelvaGuide";
 import cover from "@/assets/selva-cover.jpg";
 
 export const Route = createFileRoute("/selva")({
@@ -55,13 +56,9 @@ function SelvaLobby() {
           <Button disabled={busy} onClick={create} className="h-14 w-full text-base"><Dice5 className={busy ? "animate-spin-slow" : ""} />{busy ? "Criando…" : "Criar sala na Selva"}</Button>
           {error && <p role="alert" className="mt-3 text-sm font-semibold text-destructive">{error}</p>}
         </section>
-        <section className="sm:col-span-2 rounded-xl border border-border/30 bg-card p-5 text-sm leading-6">
-          <h2 className="mb-2 font-display text-xl">Regras da Selva</h2>
-          <ul className="list-disc space-y-1 pl-5">
-            <li>🐆 Toda dupla nos dados acorda a Onça, que corre pelo tabuleiro. Parou na casa dela? Perde B$ 50.</li>
-            <li>💎 Três relíquias escondidas: pare nelas para pegar. Já tem dono? Pague B$ 100 a ele e roube.</li>
-            <li>🏆 Quem juntar as 3 relíquias vence na hora — ou seja o último de pé.</li>
-          </ul>
+        <section className="sm:col-span-2">
+          <h2 className="mb-3 font-display text-2xl">📜 Manual da Selva</h2>
+          <SelvaCards />
         </section>
         <form onSubmit={(e) => { e.preventDefault(); if (code.length === 4) void navigate({ to: "/jogar/$code", params: { code } }); }}>
           <h2 className="mb-5 flex items-center gap-2 font-display text-2xl"><Users className="size-6 text-accent" />Sou jogador</h2>

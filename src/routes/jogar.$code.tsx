@@ -13,6 +13,7 @@ import { PropertyDetails } from "@/components/PropertyDetails";
 import { TradeTable } from "@/components/TradeTable";
 import { ScratchCard } from "@/components/ScratchCard";
 import { Gazette, MoneyRain, ScratchingBanner, TitleInfo } from "@/components/GameInfo";
+import { SelvaIntro, SelvaRulesButton } from "@/components/SelvaGuide";
 import { MiniMap } from "@/components/MiniMap";
 
 export const Route = createFileRoute("/jogar/$code")({
@@ -149,6 +150,7 @@ function Wallet() {
           📶 Sua jogada não chegou ao tabuleiro. Confira a internet e toque de novo.
         </button>
       )}
+      {G.cityOf(state) === "selva" && <><SelvaIntro /><div className="flex justify-end"><SelvaRulesButton className="border-border bg-card" /></div></>}
       <header className="cedula relative overflow-hidden rounded-2xl border-4 border-border p-4 shadow-[6px_6px_0_var(--foreground)]">
         <div className="flex items-center justify-between text-xs font-bold uppercase tracking-widest text-muted-foreground">
           <span>Banco de {G.cityName(state)} · Sala {code}</span>
