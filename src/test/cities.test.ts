@@ -45,3 +45,12 @@ describe("Independent cities", () => {
     expect(G.rentFor({ ...state, cityEvent: { kind: "temporal", text: "", expiresAt: Date.now() + 120000 } }, 42)).toBe(0);
   });
 });
+describe("Baixa temporada em Salinas", () => {
+  it("cobra metade do aluguel nos hotéis", () => {
+    const state = { ...playing("salinas"), owners: { 48: "a", 42: "a" } };
+    const ev = { kind: "temporal" as const, text: "", expiresAt: Date.now() + 120000 };
+    expect(G.rentFor(state, 48)).toBe(55);
+    expect(G.rentFor({ ...state, cityEvent: ev }, 48)).toBe(27);
+    expect(G.rentFor({ ...state, cityEvent: ev }, 42)).toBe(44);
+  });
+});

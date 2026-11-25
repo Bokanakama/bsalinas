@@ -25,8 +25,8 @@ export const AUCTION_STEP = 10;
 export const EVENT_EVERY = 4;
 export type CityEventKind = "feriado" | "temporal" | "padroeira";
 export const CITY_EVENTS: { kind: CityEventKind; text: string }[] = [
-  { kind: "feriado", text: "Férias de Julho em Salinas: rodoviária, ponte, rampa e aeroporto cobram o triplo por 1 rodada!" },
-  { kind: "temporal", text: "Ressaca da Maré Alta: Restô, Sorveteria e Sushi do Atalaia não cobram aluguel por 1 rodada" },
+  { kind: "feriado", text: "Férias de Julho em Salinas: moto-táxis, táxis, aeroporto e Boa-Esperança cobram o triplo por 1 rodada!" },
+  { kind: "temporal", text: "Baixa temporada: aluguel pela metade em qualquer hotel por 1 rodada" },
   { kind: "padroeira", text: "Círio de N. Sra. do Socorro: passar pelo Início paga B$ 400 por 2 minutos!" },
 ];
 /** Negociação: `from` gives `square` (and optionally asks for `want`), with an optional cash difference. */
@@ -40,45 +40,45 @@ export const houseCost = (group: number) => 50 * (1 + Math.floor(group / 2));
 export const BOARD: Square[] = [
   { name: "Início", kind: "start" },
   { name: "Vila de Cuiarana", kind: "property", price: 60, rent: 10, group: 0 },
-  { name: "Pedágio da Serra", kind: "toll", amount: 30 },
-  { name: "Fonte do Caranã", kind: "property", price: 80, rent: 16, group: 0 },
+  { name: "Pagou o suborno na Barreira", kind: "toll", amount: 30 },
+  { name: "Trevo", kind: "property", price: 80, rent: 16, group: 0 },
   { name: "Imposto de Renda", kind: "fine", amount: 100 },
-  { name: "Rodoviária de Salinópolis", kind: "property", price: 200, rent: 25, group: 8 },
+  { name: "Associação dos Moto-Táxis", kind: "property", price: 200, rent: 25, group: 8 },
   { name: "Igreja Matriz", kind: "property", price: 100, rent: 14, group: 1 },
   { name: "Sorte ou Revés", kind: "luck" },
-  { name: "Mercado do Bom Jesus", kind: "property", price: 100, rent: 14, group: 1 },
+  { name: "Farol", kind: "property", price: 100, rent: 14, group: 1 },
   { name: "Praça do Pescador", kind: "property", price: 120, rent: 16, group: 1 },
   { name: "Posto São Francisco", kind: "property", price: 90, rent: 12, group: 0 },
   { name: "Imposto Predial", kind: "fine", amount: 50 },
   { name: "Porto Grande", kind: "property", price: 140, rent: 20, group: 2 },
-  { name: "Equatorial Energia", kind: "property", price: 150, rent: 24, group: 9 },
+  { name: "LC Virtual Net", kind: "property", price: 150, rent: 24, group: 9 },
   { name: "Praia do Atalaia", kind: "property", price: 140, rent: 20, group: 2 },
-  { name: "Enseada da Corvina", kind: "property", price: 160, rent: 22, group: 2 },
+  { name: "Praia da Corvina", kind: "property", price: 160, rent: 22, group: 2 },
   { name: "Açaí Gelado", kind: "bonus", amount: 50 },
   { name: "Delegacia de Salinas (visita)", kind: "rest" },
-  { name: "Ponte da PA-124", kind: "property", price: 200, rent: 25, group: 8 },
+  { name: "Associação dos Taxistas", kind: "property", price: 200, rent: 25, group: 8 },
   { name: "Tubão", kind: "property", price: 180, rent: 26, group: 3 },
   { name: "Sorte ou Revés", kind: "luck" },
-  { name: "Farol de Salinópolis", kind: "property", price: 180, rent: 26, group: 3 },
-  { name: "Praça da São Pedro", kind: "property", price: 200, rent: 28, group: 3 },
+  { name: "Farol Velho", kind: "property", price: 180, rent: 26, group: 3 },
+  { name: "Praça", kind: "property", price: 200, rent: 28, group: 3 },
   { name: "Sorte ou Revés", kind: "luck" },
   { name: "Lago da Coca-Cola", kind: "property", price: 210, rent: 30, group: 3 },
   { name: "Pedágio da Ponte", kind: "toll", amount: 40 },
   { name: "Taxa do Lixo", kind: "fine", amount: 40 },
   { name: "Sorte ou Revés", kind: "luck" },
   { name: "Sombra de Coqueiro", kind: "rest" },
-  { name: "Avenida Beira-Mar", kind: "property", price: 220, rent: 30, group: 4 },
+  { name: "Nova Orla", kind: "property", price: 220, rent: 30, group: 4 },
   { name: "Sorte ou Revés", kind: "luck" },
   { name: "Praia do Spardate", kind: "property", price: 220, rent: 30, group: 4 },
   { name: "Pé na Areia", kind: "property", price: 230, rent: 32, group: 4 },
-  { name: "Trevo de Salinópolis", kind: "property", price: 240, rent: 34, group: 4 },
-  { name: "Rampa de Cuiarana", kind: "property", price: 200, rent: 25, group: 8 },
-  { name: "Orla do Maçarico", kind: "property", price: 260, rent: 36, group: 5 },
-  { name: "Calçadão do Maçarico", kind: "property", price: 260, rent: 36, group: 5 },
-  { name: "Cosanpa", kind: "property", price: 150, rent: 24, group: 9 },
-  { name: "Mirante do Maçarico", kind: "property", price: 280, rent: 40, group: 5 },
-  { name: "Aparelhagem", kind: "samba", amount: 20 },
-  { name: "Parque do Maçarico", kind: "property", price: 290, rent: 42, group: 5 },
+  { name: "Orla do Maçarico", kind: "property", price: 240, rent: 34, group: 4 },
+  { name: "Transporte Boa-Esperança", kind: "property", price: 200, rent: 25, group: 8 },
+  { name: "Praça do Skate", kind: "property", price: 260, rent: 36, group: 5 },
+  { name: "Policlínica Valdecy", kind: "property", price: 260, rent: 36, group: 5 },
+  { name: "SEA Telecom", kind: "property", price: 150, rent: 24, group: 9 },
+  { name: "Corpo de Bombeiros", kind: "property", price: 280, rent: 40, group: 5 },
+  { name: "Caiu na blitz", kind: "samba", amount: 20 },
+  { name: "Mercado Bom Jesus", kind: "property", price: 290, rent: 42, group: 5 },
   { name: "Taxa das Férias de Julho", kind: "fine", amount: 60 },
   { name: "Restô do Atlântico", kind: "property", price: 300, rent: 44, group: 6 },
   { name: "Sorveteria Blaus", kind: "property", price: 300, rent: 44, group: 6 },
@@ -86,14 +86,14 @@ export const BOARD: Square[] = [
   { name: "Vá para a Delegacia", kind: "gojail" },
   { name: "Aeroporto de Salinópolis", kind: "property", price: 200, rent: 25, group: 8 },
   { name: "Achou B$ na Areia!", kind: "bonus", amount: 100 },
-  { name: "Hotel Salinópolis", kind: "property", price: 350, rent: 55, group: 7 },
+  { name: "Hotel Privê", kind: "property", price: 350, rent: 55, group: 7 },
   { name: "Sorte ou Revés", kind: "luck" },
   { name: "Imposto de Luxo", kind: "fine", amount: 100 },
   { name: "GAV Resorts", kind: "property", price: 400, rent: 65, group: 7 },
   { name: "Tacacá com Camarão", kind: "bonus", amount: 150 },
   { name: "Sorte ou Revés", kind: "luck" },
-  { name: "Pedágio do Túnel", kind: "toll", amount: 40 },
-  { name: "Aqualand & Atalaia Vip", kind: "property", price: 450, rent: 75, group: 7 },
+  { name: "Pagou por estacionar no Pé na Areia", kind: "toll", amount: 40 },
+  { name: "Aqualand", kind: "property", price: 450, rent: 75, group: 7 },
 ];
 
 /** Sorte ou Revés cards: positive = bank pays player, negative = player pays bank. */
@@ -119,7 +119,7 @@ export const LUCK_CARDS: LuckCard[] = [
   { text: "Conta de luz do veraneio chegou alta", amount: -90 },
   { text: "Celular caiu no mar do Atalaia", amount: -120 },
   { text: "Pagou o açaí da família toda", amount: -70 },
-  { text: "Van lotada até a Rodoviária", amount: 0, goto: 5 },
+  { text: "Moto-táxi lotado até a Associação", amount: 0, goto: 5 },
   { text: "Mutirão de limpeza da praia: pague por chalé", amount: 0, perHouse: 15 },
   { text: "Rifa da festa de São Pedro! Cada jogador te faz um Pix", amount: 0, each: 20 },
   { text: "Passe Livre da Delegacia de Salinas! Guarde este cartão", amount: 0, freeJail: true },
@@ -454,13 +454,14 @@ export function rentFor(s: GameState, square: number): number {
   const base = sq.rent ?? 0;
   if (!owner || isMortgaged(s, square)) return owner ? 0 : base;
   const cityEvent = activeCityEvent(s);
-  if (cityEvent?.kind === "temporal" && sq.group === 6) return 0;
+  const lowSeason = cityEvent?.kind === "temporal" && cityOf(s) === "salinas";
+  if (cityEvent?.kind === "temporal" && !lowSeason && sq.group === 6) return 0;
   const count = boardFor(s).filter((b, i) => b.group === sq.group && s.owners[i] === owner).length;
   if (sq.group === 8) return base * 2 ** (count - 1) * (cityEvent?.kind === "feriado" ? 3 : 1);
   if (sq.group === 9) return (s.dice[0] + s.dice[1]) * (count >= 2 ? 10 : 4);
   const h = housesAt(s, square);
-  if (h > 0) return base * HOUSE_MULT[h]!;
-  return base * (ownsGroup(s, owner, sq.group!) ? 2 : 1);
+  const raw = h > 0 ? base * HOUSE_MULT[h]! : base * (ownsGroup(s, owner, sq.group!) ? 2 : 1);
+  return lowSeason && sq.group === 7 ? Math.floor(raw / 2) : raw;
 }
 
 /** Build one barraquinha (4th = Sobrado) on a street of a full color group the player owns. */
