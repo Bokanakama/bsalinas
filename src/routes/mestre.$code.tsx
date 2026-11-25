@@ -9,7 +9,7 @@ import { DicePair } from "@/components/Dice";
 import { music, sfx, voice, type VoiceClip } from "@/lib/sfx";
 import { Animal } from "@/components/Animal";
 import { TransferShow } from "@/components/TransferShow";
-import { Gazette, MoneyRain, ScratchingBanner, TitleInfo } from "@/components/GameInfo";
+import { Gazette, RelicTracker, MoneyRain, ScratchingBanner, TitleInfo } from "@/components/GameInfo";
 import { paymentText } from "@/lib/payment-text";
 
 export const Route = createFileRoute("/mestre/$code")({
@@ -390,6 +390,7 @@ function Master() {
         <button onClick={() => setPaused(true)} aria-label="Pausar" className="min-h-10 rounded-lg border-2 border-primary-foreground px-2 font-display">❚❚</button>
       </div>
       <Gazette state={state} className="text-[clamp(10px,1.7vh,18px)]" />
+      <RelicTracker state={state} className="text-[clamp(10px,1.7vh,18px)]" />
       <div className="grid grid-cols-2 gap-[0.8vh]">
         {ranking.map((p) => {
           const i = state.players.indexOf(p);

@@ -12,7 +12,7 @@ import { StreetStrip } from "@/components/StreetStrip";
 import { PropertyDetails } from "@/components/PropertyDetails";
 import { TradeTable } from "@/components/TradeTable";
 import { ScratchCard } from "@/components/ScratchCard";
-import { Gazette, MoneyRain, ScratchingBanner, TitleInfo } from "@/components/GameInfo";
+import { Gazette, RelicTracker, MoneyRain, ScratchingBanner, TitleInfo } from "@/components/GameInfo";
 import { SelvaIntro, SelvaRulesButton } from "@/components/SelvaGuide";
 import { MiniMap } from "@/components/MiniMap";
 
@@ -164,6 +164,7 @@ function Wallet() {
       </header>
 
       <Gazette state={state} className="text-sm" />
+      <RelicTracker state={state} className="text-sm" />
       {pd?.kind === "scratch" && pd.playerId !== pid && <ScratchingBanner state={state} />}
       {state.phase === "over" && <MoneyRain />}
       {touchesMe && <TransferShow state={state} top />}

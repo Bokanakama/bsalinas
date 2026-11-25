@@ -1,6 +1,7 @@
-import { activeCityEvent, boardFor, cityName, groupOwners, money, type GameState } from "@/lib/game";
+import { activeCityEvent, boardFor, cityName, cityOf, relicCount, groupOwners, money, type GameState } from "@/lib/game";
 import { useEffect, useState } from "react";
 import { Animal } from "./Animal";
+import { RELIC_NAMES } from "@/lib/selva";
 
 /** Gazeta da Cidade: the active city news stays visible until it expires. */
 export function Gazette({ state, className = "" }: { state: GameState; className?: string }) {
@@ -14,10 +15,12 @@ export function Gazette({ state, className = "" }: { state: GameState; className
   if (!ev) return null;
   const left = Math.max(0, Math.ceil(((ev.expiresAt ?? now + 120_000) - now) / 1000));
   return (
-    <div className={`cedula flex items-center gap-2 rounded-xl border-4 border-border px-3 py-1 shadow-[4px_4px_0_var(--foreground)] ${className}`}>
-      <span className="font-display uppercase text-primary">📰 Gazeta de {cityName(state)}</span>
-      <span className="flex-1 font-bold">{ev.text}</span>
-      <span className="carimbo whitespace-nowrap px-1 text-xs text-destructive">{ev.expiresAt !== undefined ? `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}` : "nesta rodada"}</span>
+    <div className={`cedula rounded-xl border-2 border-border px-2 py-1 leading-tight shadow-[3px_3px_0_var(--foreground)] ${className}`}>
+      <div className="flex items-center justify-between gap-2 text-[0.75em]">
+        <span className="font-display uppercase text-primary">📰 Gazeta · {cityName(state)}</span>
+        <span className="carimbo whitespace-nowrap px-1 text-destructive">{ev.expiresAt !== undefined ? `⏱️ ${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}` : "nesta rodada"}</span>
+      </div>
+      <p className="line-clamp-2 font-bold">{ev.text}</p>
     </div>
   );
 }
@@ -77,6 +80,30 @@ export function MoneyRain() {
           {i % 3 ? "💵" : "🪙"}
         </span>
       ))}
+    </div>
+  );
+}
+
+const RELIC_ICONS = ["👁️", "💧", "💚"];
+
+/** Selva: who holds each relic, plus per-player count (3 wins). */
+export function RelicTracker({ state, className = "" }: { state: GameState; className?: string }) {
+  if (cityOf(state) !== "selva") return null;
+  return (
+    <div className={`cedula rounded-xl border-2 border-border px-2 py-1 leading-tight ${className}`}>
+      <p className="font-display text-[0.75em] uppercase text-primary">💎 Altar das Relíquias</p>
+      <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+        {RELIC_NAMES.map((name, k) => {
+          const holder = state.players.find((p) => p.id === state.relics?.[k]);
+          const count = holder ? relicCount(state, holder.id) : 0;
+          return (
+            <span key={name} className={`flex items-center gap-1 ${count >= 2 ? "animate-pulse" : ""}`} title={name}>
+              <span className={holder ? "" : "opacity-40 grayscale"}>{RELIC_ICONS[k]}</span>
+              {holder ? <b style={{ color: holder.color }}>{holder.name} ({count}/3)</b> : <span className="text-muted-foreground">livre</span>}
+            </span>
+          );
+        })}
+      </div>
     </div>
   );
 }
