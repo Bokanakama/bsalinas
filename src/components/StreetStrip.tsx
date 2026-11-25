@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { BOARD, housesAt, isMortgaged, money, rentFor, type GameState } from "@/lib/game";
+import { boardFor, housesAt, isMortgaged, money, rentFor, type GameState } from "@/lib/game";
 import { Animal } from "./Animal";
 import { sfx } from "@/lib/sfx";
 
 const ICON: Record<string, string> = { start: "★", toll: "🚧", fine: "🚨", bonus: "💵", rest: "🌴", luck: "❓", gojail: "👮", jail: "👮", samba: "🥁" };
-const N = BOARD.length;
+const N = 56;
 
 /** Horizontal street strip: 5 squares around the player's (animated) position. */
 export function StreetStrip({ state, playerId, onPick }: { state: GameState; playerId: string; onPick?: (i: number) => void }) {
@@ -31,7 +31,7 @@ export function StreetStrip({ state, playerId, onPick }: { state: GameState; pla
       <div className="flex items-end gap-1">
         {[-2, -1, 0, 1, 2].map((off) => {
           const i = (shown + off + N) % N;
-          const sq = BOARD[i]!;
+          const sq = boardFor(state)[i]!;
           const owner = state.players.find((p) => p.id === state.owners[i]);
           const here = state.players.filter((p) => (p.id === playerId ? shown : p.pos) === i);
           const h = housesAt(state, i);

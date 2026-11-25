@@ -36,3 +36,6 @@ use the editor.
 - City-selector theme overrides stay scoped to .city-portal; this isolates portal styling from all game pages.
 - Room data is accessed through roomRequest and the capability-checking room_gateway RPC; direct table grants are service-only, master credentials never enter participant responses, and broadcasts are doorbells rather than trusted state or actions.
 - Render legacy payment wording through paymentText without modifying stored state or action names; this preserves existing room compatibility while keeping payments entirely in-game.
+
+- Resolve boards, cards, events and building labels from each room’s city via pure selectors; missing city means Salinas, so simultaneous cities and legacy rooms remain isolated.
+- Creating a Boró room persists its city through the existing master-only gateway before opening its board; no new table or alternate room access path is needed.

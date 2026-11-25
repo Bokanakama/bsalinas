@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import type { GameState } from "./game";
+import { newState, type CityId, type GameState } from "./game";
 import { roomRequest } from "./room.functions";
 
 export function makeCode() {
@@ -46,10 +46,11 @@ export async function ensureRoomAccess(code: string, master = false) {
   pendingAccess.set(key, task);
   return task;
 }
-export async function createRoom(code: string) {
+export async function createRoom(code: string, city: CityId = "salinas") {
   const response = await roomRequest({ data: { op: "create", code } });
   if (!response.token) throw new Error("Não deu para criar a sala.");
   localStorage.setItem(`boro-access-${code}-master`, response.token);
+  if (city === "boro") await accessRoom(code, "write", { state: newState(city) }, true);
 }
 export async function accessRoom(code: string, op: "read" | "write" | "actions" | "send" | "prune", payload: Record<string, unknown> = {}, master = false) {
   const token = localStorage.getItem(`boro-access-${code}-${master ? "master" : "player"}`);

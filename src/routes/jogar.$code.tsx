@@ -18,10 +18,10 @@ import { MiniMap } from "@/components/MiniMap";
 export const Route = createFileRoute("/jogar/$code")({
   head: ({ params }) => ({
     meta: [
-      { title: `Carteira — sala ${params.code} | Banco Imobiliário Salinas` },
+      { title: `Carteira — sala ${params.code} | Banco Boró e Salinas` },
       { name: "description", content: "Sua carteira de Borós: escolha seu bichinho, jogue os dados e compre terrenos." },
-      { property: "og:title", content: "Carteira — Banco Imobiliário Salinas" },
-      { property: "og:description", content: "Entre na partida de Banco Imobiliário Salinas pelo celular." },
+      { property: "og:title", content: "Carteira — Banco Boró e Salinas" },
+      { property: "og:description", content: "Entre na partida de Banco Boró e Salinas pelo celular." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -143,7 +143,7 @@ function Wallet() {
   const touchesMe = t && (t.from === pid || t.to === pid);
 
   return (
-    <main className="azulejo mx-auto flex min-h-dvh max-w-md flex-col gap-3 p-3">
+    <main className={`${G.cityOf(state) === "boro" ? "boro-game " : ""}azulejo mx-auto flex min-h-dvh max-w-md flex-col gap-3 p-3`}>
       {netFail && (
         <button role="alert" onClick={() => setNetFail(false)} className="sticky top-2 z-50 rounded-xl border-4 border-border bg-destructive px-3 py-2 text-sm font-bold text-destructive-foreground">
           📶 Sua jogada não chegou ao tabuleiro. Confira a internet e toque de novo.
@@ -151,13 +151,13 @@ function Wallet() {
       )}
       <header className="cedula relative overflow-hidden rounded-2xl border-4 border-border p-4 shadow-[6px_6px_0_var(--foreground)]">
         <div className="flex items-center justify-between text-xs font-bold uppercase tracking-widest text-muted-foreground">
-          <span>Banco de Salinas · Sala {code}</span>
+          <span>Banco de {G.cityName(state)} · Sala {code}</span>
           <span>{G.ANIMALS.find((a) => a.id === me.animal)?.name}</span>
         </div>
         <p className="font-display text-2xl" style={{ color: me.color }}>{me.name}</p>
         <p className="text-xs uppercase text-muted-foreground">Saldo</p>
         <p key={me.balance} className={`animate-pop font-display text-5xl ${me.balance < 0 ? "text-destructive" : "text-foreground"}`}>{G.money(me.balance)}</p>
-        <p className="text-sm">📍 {G.BOARD[me.pos]!.name}{me.freeJail ? ` · 🎫 Saia Livre ×${me.freeJail}` : ""}</p>
+        <p className="text-sm">📍 {G.boardFor(state)[me.pos]!.name}{me.freeJail ? ` · 🎫 Saia Livre ×${me.freeJail}` : ""}</p>
         <Animal id={me.animal} className="absolute -bottom-2 right-1 h-28 w-auto" />
       </header>
 
@@ -207,8 +207,8 @@ function Wallet() {
         return (
           <Card highlight={mine}>
             <p className="text-xs font-bold uppercase text-muted-foreground">Leilão · {mine ? `sua vez · ${left}s` : `vez de ${state.players.find((p) => p.id === turnId)?.name ?? "?"} · ${left}s`}</p>
-            <p className="font-display text-2xl">{G.BOARD[pd.square]!.name}</p>
-            <p className="mb-3 text-sm">Lance atual: <b>{G.money(pd.bid)}</b>{pd.bidder ? ` · ${pd.bidder === pid ? "seu!" : state.players.find((p) => p.id === pd.bidder)?.name}` : ""} · Tabela {G.money(G.BOARD[pd.square]!.price!)}</p>
+            <p className="font-display text-2xl">{G.boardFor(state)[pd.square]!.name}</p>
+            <p className="mb-3 text-sm">Lance atual: <b>{G.money(pd.bid)}</b>{pd.bidder ? ` · ${pd.bidder === pid ? "seu!" : state.players.find((p) => p.id === pd.bidder)?.name}` : ""} · Tabela {G.money(G.boardFor(state)[pd.square]!.price!)}</p>
             <div className="mb-3"><TitleInfo state={state} square={pd.square} /></div>
             {mine ? (
               <>
@@ -227,7 +227,7 @@ function Wallet() {
       })()}
 
       {pd?.kind === "buy" && pd.playerId === pid && !state.moving && (() => {
-        const sq = G.BOARD[pd.square]!;
+        const sq = G.boardFor(state)[pd.square]!;
         return (
           <Card>
             <p className="font-display text-sm uppercase tracking-widest text-accent">Terreno à venda</p>
@@ -242,7 +242,7 @@ function Wallet() {
         );
       })()}
       {pd?.kind === "buy" && pd.playerId !== pid && (
-        <Card><p className="text-sm">{state.players.find((p) => p.id === pd.playerId)?.name} está decidindo se compra <b>{G.BOARD[pd.square]!.name}</b>…</p></Card>
+        <Card><p className="text-sm">{state.players.find((p) => p.id === pd.playerId)?.name} está decidindo se compra <b>{G.boardFor(state)[pd.square]!.name}</b>…</p></Card>
       )}
 
       {pd?.kind === "collect" && pd.targetId === pid && (
@@ -266,7 +266,7 @@ function Wallet() {
         <Card highlight>
           <p className="font-display text-xl text-destructive">⚠️ Risco de falência</p>
           <p className="mb-2">Você precisa de <b>{G.money(pd.amount)}</b> ({pd.reason}). Tem {G.money(me.balance)}.</p>
-          <p className="mb-3 text-sm text-muted-foreground">Venda chalés, hipoteque ou negocie terrenos em "Seus bairros" abaixo e depois pague.</p>
+          <p className="mb-3 text-sm text-muted-foreground">Venda {G.buildingName(state, false, true)}, hipoteque ou negocie terrenos em "Seus bairros" abaixo e depois pague.</p>
           <div className="flex gap-2">
             <button disabled={me.balance < pd.amount} onClick={() => act("payDebt")} className={`${btn} bg-success text-success-foreground`}>Pagar dívida</button>
             <button onClick={() => act("giveUp")} className={`${btn} bg-muted`}>Declarar falência</button>
@@ -298,7 +298,7 @@ function Wallet() {
       )}
       {state.offer?.to === pid && (() => {
         const o = state.offer!;
-        const nm = (l: number[]) => l.map((i) => G.BOARD[i]!.name);
+        const nm = (l: number[]) => l.map((i) => G.boardFor(state)[i]!.name);
         const you = [...nm(o.wantSquares ?? []), o.cashTo > 0 ? G.money(o.cashTo) : ""].filter(Boolean).join(" + ") || "nada";
         const get = [...nm(o.giveSquares ?? []), o.cashFrom > 0 ? G.money(o.cashFrom) : ""].filter(Boolean).join(" + ") || "nada";
         return (
@@ -352,13 +352,13 @@ function Center({ children }: { children: ReactNode }) {
 const miniBtn = "min-h-12 flex-1 py-2 text-xs font-bold disabled:opacity-40";
 /** Lands grouped by color, with who owns the ones still missing. */
 function Neighborhoods({ state, pid, balance, act, onSell, onInspect, onTrade }: { state: G.GameState; pid: string; balance: number; act: (t: string, p?: Record<string, unknown>) => void; onSell: (i: number) => void; onInspect: (i: number) => void; onTrade: (to: string) => void }) {
-  const groups = [...new Set(G.BOARD.map((b, i) => (state.owners[i] === pid ? b.group : undefined)).filter((g): g is number => g !== undefined))].sort((a, b) => a - b);
+  const groups = [...new Set(G.boardFor(state).map((b, i) => (state.owners[i] === pid ? b.group : undefined)).filter((g): g is number => g !== undefined))].sort((a, b) => a - b);
   const label = (g: number) => (g === 8 ? "Rodoviárias" : g === 9 ? "Companhias" : `Bairro ${g + 1}`);
   return (
     <section className="space-y-2">
       <p className="font-display">Seus bairros</p>
       {groups.map((g) => {
-        const sqs = G.BOARD.map((b, i) => ({ b, i })).filter(({ b }) => b.group === g);
+        const sqs = G.boardFor(state).map((b, i) => ({ b, i })).filter(({ b }) => b.group === g);
         const have = sqs.filter(({ i }) => state.owners[i] === pid).length;
         const full = have === sqs.length;
         return (
@@ -384,8 +384,8 @@ function Neighborhoods({ state, pid, balance, act, onSell, onInspect, onTrade }:
                 );
                 const h = G.housesAt(state, i);
                 const mort = G.isMortgaged(state, i);
-                const groupHasHouses = G.BOARD.some((x, j) => x.group === g && G.housesAt(state, j) > 0);
-                const canBuild = g < 8 && !mort && G.ownsGroup(state, pid, g) && h < G.MAX_HOUSES && !G.BOARD.some((x, j) => x.group === g && G.housesAt(state, j) < h) && !G.BOARD.some((x, j) => x.group === g && G.isMortgaged(state, j));
+                const groupHasHouses = G.boardFor(state).some((x, j) => x.group === g && G.housesAt(state, j) > 0);
+                const canBuild = g < 8 && !mort && G.ownsGroup(state, pid, g) && h < G.MAX_HOUSES && !G.boardFor(state).some((x, j) => x.group === g && G.housesAt(state, j) < h) && !G.boardFor(state).some((x, j) => x.group === g && G.isMortgaged(state, j));
                 return (
                   <li key={i} className={`px-3 py-1.5 text-sm ${mort ? "bg-muted" : ""}`}>
                     <div className="flex items-center gap-2">
@@ -395,16 +395,16 @@ function Neighborhoods({ state, pid, balance, act, onSell, onInspect, onTrade }:
                     {state.phase === "playing" && (
                       <div className="mt-1 flex gap-1 overflow-hidden rounded-md border-2 border-border">
                         {mort ? (
-                          <button disabled={state.moving || balance < G.unmortgageCost(i)} onClick={() => act("unmortgage", { square: i })} className={`${miniBtn} bg-muted`}>Resgatar {G.money(G.unmortgageCost(i))}</button>
+                          <button disabled={state.moving || balance < G.unmortgageCost(i, state)} onClick={() => act("unmortgage", { square: i })} className={`${miniBtn} bg-muted`}>Resgatar {G.money(G.unmortgageCost(i, state))}</button>
                         ) : !groupHasHouses && (
                           <>
-                            <button disabled={state.moving} onClick={() => act("mortgage", { square: i })} className={`${miniBtn} bg-muted`}>Hipotecar +{G.money(G.mortgageValue(i))}</button>
+                            <button disabled={state.moving} onClick={() => act("mortgage", { square: i })} className={`${miniBtn} bg-muted`}>Hipotecar +{G.money(G.mortgageValue(i, state))}</button>
                             <button disabled={!!state.offer} onClick={() => onSell(i)} className={`${miniBtn} bg-accent text-accent-foreground`}>Negociar</button>
                           </>
                         )}
                         {h > 0 && (
-                          <button disabled={state.moving || G.BOARD.some((x, j) => x.group === g && G.housesAt(state, j) > h)} onClick={() => { if (window.confirm(`Vender ${h >= G.MAX_HOUSES ? "o resort" : "um chalé"} de ${G.BOARD[i]!.name} por ${G.money(G.houseSaleValue(g))}?`)) act("sellHouse", { square: i }); }} className="min-h-8 rounded-lg bg-muted px-2 py-1 text-xs font-semibold disabled:opacity-40">
-                            Vender {h >= G.MAX_HOUSES ? "resort" : "chalé"} +{G.money(G.houseSaleValue(g))}
+                          <button disabled={state.moving || G.boardFor(state).some((x, j) => x.group === g && G.housesAt(state, j) > h)} onClick={() => { if (window.confirm(`Vender ${h >= G.MAX_HOUSES ? `o ${G.buildingName(state, true)}` : `${G.cityOf(state) === "boro" ? "uma" : "um"} ${G.buildingName(state)}`} de ${G.boardFor(state)[i]!.name} por ${G.money(G.houseSaleValue(g))}?`)) act("sellHouse", { square: i }); }} className="min-h-8 rounded-lg bg-muted px-2 py-1 text-xs font-semibold disabled:opacity-40">
+                            Vender {G.buildingName(state, h >= G.MAX_HOUSES)} +{G.money(G.houseSaleValue(g))}
                           </button>
                         )}
                         {canBuild && (

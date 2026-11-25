@@ -8,6 +8,12 @@ import { accessRoom, createRoom, ensureRoomAccess } from "@/lib/room";
 describe("Room credentials", () => {
   beforeEach(() => { localStorage.clear(); request.mockReset(); });
 
+  it("persists Boró city with the master credential before opening its room", async () => {
+    request.mockResolvedValueOnce({ token: "master-credential", result: {} }).mockResolvedValueOnce({ result: {} });
+    await createRoom("ABCD", "boro");
+    expect(request).toHaveBeenLastCalledWith({ data: { op: "write", code: "ABCD", token: "master-credential", payload: { state: expect.objectContaining({ city: "boro", phase: "lobby", players: [] }) } } });
+  });
+
   it("does not grant master access from the legacy browser flag", async () => {
     localStorage.setItem("boro-master-ABCD", "1");
     expect(await ensureRoomAccess("ABCD", true)).toBe(false);

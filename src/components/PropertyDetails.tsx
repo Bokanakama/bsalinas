@@ -1,9 +1,9 @@
-import { BOARD, groupTag, HOUSE_MULT, isMortgaged, money, mortgageValue, rentFor, type GameState } from "@/lib/game";
+import { boardFor, buildingName, groupTag, HOUSE_MULT, isMortgaged, money, mortgageValue, rentFor, type GameState } from "@/lib/game";
 import { Animal } from "./Animal";
 
 /** Phone version of the board's property card: prices, rent table, mortgage and owner. */
 export function PropertyDetails({ state, square, onClose }: { state: GameState; square: number; onClose: () => void }) {
-  const sq = BOARD[square]!;
+  const sq = boardFor(state)[square]!;
   const owner = state.players.find((p) => p.id === state.owners[square]);
   const prop = sq.kind === "property";
   const station = sq.group === 8;
@@ -20,10 +20,10 @@ export function PropertyDetails({ state, square, onClose }: { state: GameState; 
             <>
               <Row k="Preço" v={money(sq.price!)} />
               <Row k="Aluguel agora" v={money(rentFor(state, square))} strong />
-              {!station && !util && HOUSE_MULT.slice(1).map((m, k) => <Row key={k} k={k === 3 ? "Com resort" : `Com ${k + 1} chalé${k ? "s" : ""}`} v={money((sq.rent ?? 0) * m)} />)}
+              {!station && !util && HOUSE_MULT.slice(1).map((m, k) => <Row key={k} k={k === 3 ? `Com ${buildingName(state, true)}` : `Com ${k + 1} ${buildingName(state, false, k > 0)}`} v={money((sq.rent ?? 0) * m)} />)}
               {station && <Row k="Regra" v="B$ 25 · 50 · 100 · 200" />}
               {util && <Row k="Regra" v="Dados × 4 (×10 com as duas)" />}
-              <Row k="Hipoteca" v={money(mortgageValue(square))} />
+              <Row k="Hipoteca" v={money(mortgageValue(square, state))} />
               <div className="flex items-center justify-between gap-2 pb-1">
                 <span className="text-muted-foreground">Dono</span>
                 <span className="flex items-center gap-1 font-semibold">{owner && <Animal id={owner.animal} className="h-7 w-auto" />}<span style={owner ? { color: owner.color } : undefined}>{owner ? owner.name : "Banco (à venda)"}</span></span>

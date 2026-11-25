@@ -1,4 +1,4 @@
-import { BOARD, groupTag, HOUSE_MULT, housesAt, isMortgaged, money, ownsGroup, rentFor, startBonus, type GameState } from "@/lib/game";
+import { boardFor, buildingName, cityOf, groupTag, HOUSE_MULT, housesAt, isMortgaged, money, ownsGroup, rentFor, startBonus, type GameState } from "@/lib/game";
 import { useState, type ReactNode } from "react";
 import { Animal } from "./Animal";
 
@@ -56,7 +56,8 @@ function Tents({ n }: { n: number }) {
 }
 
 function Details({ state, i, onClose }: { state: GameState; i: number; onClose: () => void }) {
-  const sq = BOARD[i]!;
+  const sq = boardFor(state)[i];
+  if (!sq) return null;
   const owner = state.players.find((p) => p.id === state.owners[i]);
   const prop = sq.kind === "property";
   const util = sq.group === 9;
@@ -73,7 +74,7 @@ function Details({ state, i, onClose }: { state: GameState; i: number; onClose: 
             <>
               <Row k="Preço" v={money(sq.price!)} />
               <Row k="Aluguel agora" v={money(rentFor(state, i))} strong />
-              {!util && !station && HOUSE_MULT.slice(1).map((m, k) => <Row key={k} k={k === 3 ? "Com resort" : `Com ${k + 1} chalé${k ? "s" : ""}`} v={money((sq.rent ?? 0) * m)} />)}
+              {!util && !station && HOUSE_MULT.slice(1).map((m, k) => <Row key={k} k={k === 3 ? `Com ${buildingName(state, true)}` : `Com ${k + 1} ${buildingName(state, false, k > 0)}`} v={money((sq.rent ?? 0) * m)} />)}
               {station && <Row k="Regra" v="Dobra a cada rodoviária" />}
               {util && <Row k="Regra" v="Dados × 4 (×10 com as duas)" />}
               <Row k="Dono" v={owner ? owner.name : "Banco (à venda)"} />
@@ -102,7 +103,7 @@ export function Board({ state, center, side, displayPos, focus }: { state: GameS
         className="grid size-full gap-[0.35cqw] p-[0.6cqw] transition-transform duration-500 ease-out"
         style={{ gridTemplateColumns: CF.map((v) => `${v}fr`).join(" "), gridTemplateRows: RF.map((v) => `${v}fr`).join(" ") }}
       >
-        {BOARD.map((sq, i) => {
+        {boardFor(state).map((sq, i) => {
           const { r, c, side } = cell(i);
           const owner = state.players.find((p) => p.id === state.owners[i]);
           const here = state.players.filter((p) => (displayPos[p.id] ?? p.pos) === i);
@@ -125,7 +126,7 @@ export function Board({ state, center, side, displayPos, focus }: { state: GameS
             return (
               <button type="button" onClick={() => setPicked(i)} key={i} style={{ gridRow: r, gridColumn: c }} className={`${base} flex flex-col items-center justify-center gap-[0.25cqw] rounded-[1cqw] p-[0.4cqw] text-center overflow-hidden ${k.tone}`}>
                 <Icon name={k.icon} className="size-[2.8cqw] shrink-0" />
-                <span className="max-w-full break-words font-display text-[1.25cqw] leading-none">{k.title}</span>
+                <span className="max-w-full break-words font-display text-[1.25cqw] leading-none">{cityOf(state) === "boro" ? sq.name.replace(" (visita)", "") : k.title}</span>
                 <span className="rounded-full bg-card/80 px-[0.6cqw] py-[0.1cqw] text-[0.88cqw] font-semibold shrink-0 text-foreground max-w-full truncate">{i === 0 ? `+${money(startBonus(state))}` : k.tag}</span>
                 {tokens}
               </button>

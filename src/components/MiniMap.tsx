@@ -1,4 +1,4 @@
-import { BOARD, type GameState } from "@/lib/game";
+import { boardFor, type GameState } from "@/lib/game";
 import { Animal } from "./Animal";
 
 /** Phone: quick look at every square and where each player is. */
@@ -9,7 +9,7 @@ export function MiniMap({ state, onClose }: { state: GameState; onClose: () => v
       <div role="dialog" aria-label="Tabuleiro completo" onClick={(e) => e.stopPropagation()} className="animate-pop flex max-h-[92dvh] w-full max-w-md flex-col overflow-hidden rounded-2xl border-4 border-border bg-card shadow-[6px_6px_0_var(--foreground)]">
         <p className="border-b-4 border-border px-4 py-2 font-display text-xl">🗺️ Tabuleiro completo</p>
         <ol className="grid min-h-0 flex-1 grid-cols-4 gap-1 overflow-y-auto p-2">
-          {BOARD.map((b, i) => {
+          {boardFor(state).map((b, i) => {
             const here = at(i);
             const owner = state.players.find((p) => p.id === state.owners[i]);
             return (

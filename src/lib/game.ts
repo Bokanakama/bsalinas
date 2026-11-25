@@ -1,3 +1,4 @@
+import { BORO_BOARD, BORO_CARDS, BORO_EVENTS } from "./boro";
 // Pure game rules for Banco Imobiliário Salinas. The master device is the only writer of GameState.
 export type SquareKind = "start" | "property" | "toll" | "fine" | "bonus" | "rest" | "luck" | "gojail" | "samba";
 export interface Square {
@@ -32,8 +33,8 @@ export const CITY_EVENTS: { kind: CityEventKind; text: string }[] = [
 /** Mesa de negociação: cada lado pode entregar vários imóveis; o dinheiro corre num só sentido. */
 export interface Offer { id: string; from: string; to: string; giveSquares: number[]; wantSquares: number[]; cashFrom: number; cashTo: number }
 export const groupTag = (g?: number) => (g === undefined ? "" : g === 8 ? "R" : g === 9 ? "U" : `B${g + 1}`);
-export const mortgageValue = (square: number) => Math.floor((BOARD[square]?.price ?? 0) / 2);
-export const unmortgageCost = (square: number) => Math.ceil(mortgageValue(square) * 1.1);
+export const mortgageValue = (square: number, s?: GameState) => Math.floor((boardFor(s)[square]?.price ?? 0) / 2);
+export const unmortgageCost = (square: number, s?: GameState) => Math.ceil(mortgageValue(square, s) * 1.1);
 export const houseCost = (group: number) => 50 * (1 + Math.floor(group / 2));
 
 export const BOARD: Square[] = [
@@ -124,6 +125,15 @@ export const LUCK_CARDS: LuckCard[] = [
   { text: "Passe Livre da Delegacia de Salinas! Guarde este cartão", amount: 0, freeJail: true },
 ];
 
+export const cityOf = (s?: Pick<GameState, "city">) => s?.city === "boro" ? "boro" : "salinas";
+export const boardFor = (s?: Pick<GameState, "city">) => cityOf(s) === "boro" ? BORO_BOARD : BOARD;
+export const cardsFor = (s: GameState) => cityOf(s) === "boro" ? BORO_CARDS : LUCK_CARDS;
+export const eventsFor = (s: GameState) => cityOf(s) === "boro" ? BORO_EVENTS : CITY_EVENTS;
+export const cityName = (s: GameState) => cityOf(s) === "boro" ? "Cidade Boró" : "Salinas";
+export const buildingName = (s: GameState, hotel = false, plural = false) => cityOf(s) === "boro"
+  ? (hotel ? (plural ? "sobrados" : "sobrado") : (plural ? "barracas" : "barraca"))
+  : (hotel ? (plural ? "resorts" : "resort") : (plural ? "chalés" : "chalé"));
+
 export const PLAYER_COLORS = ["#d9480f", "#1864ab", "#2b8a3e", "#e8a317", "#862e9c", "#c2255c"];
 export const ANIMALS = [
   { id: "coelho", name: "Coelhinho", color: "#1c7ed6" },
@@ -166,7 +176,10 @@ export type Pending =
   /** Cobrança coletiva: every other active player taps "Enviar Boró" to pay `targetId`. */
   | { kind: "collect"; targetId: string; amount: number; reason: string; paid: string[]; endsAt: number };
 
+export type CityId = "salinas" | "boro";
 export interface GameState {
+  /** Missing city in existing rooms means Salinas. */
+  city?: CityId;
   phase: "lobby" | "playing" | "over";
   houses?: Record<string, number>;
   mortgaged?: Record<string, boolean>;
@@ -191,7 +204,8 @@ export interface GameState {
   cardSeq?: number;
 }
 
-export const newState = (): GameState => ({
+export const newState = (city: CityId = "salinas"): GameState => ({
+  city,
   phase: "lobby",
   players: [],
   turn: 0,
@@ -220,15 +234,15 @@ export function expireCityEvent(s: GameState, now = Date.now()): GameState {
 }
 export const housesAt = (s: GameState, i: number) => s.houses?.[i] ?? 0;
 export const ownsGroup = (s: GameState, id: string, group: number) =>
-  BOARD.every((b, i) => b.group !== group || s.owners[i] === id);
+  boardFor(s).every((b, i) => b.group !== group || s.owners[i] === id);
 /** Balance + land value + barraquinhas value. */
 export function netWorth(s: GameState, id: string): number {
   const p = s.players.find((x) => x.id === id);
   if (!p || p.out) return 0;
   return Object.entries(s.owners).reduce((t, [i, o]) => {
     if (o !== id) return t;
-    const sq = BOARD[+i]!;
-    return t + (isMortgaged(s, +i) ? mortgageValue(+i) : sq.price ?? 0) + housesAt(s, +i) * houseCost(sq.group ?? 0);
+    const sq = boardFor(s)[+i]!;
+    return t + (isMortgaged(s, +i) ? mortgageValue(+i, s) : sq.price ?? 0) + housesAt(s, +i) * houseCost(sq.group ?? 0);
   }, p.balance);
 }
 
@@ -306,9 +320,9 @@ export function roll(s: GameState, id: string, d1: number, d2: number, seenRollI
     base = patch(base, id, { doubles });
   }
   const steps = d1 + d2;
-  const to = (p.pos + steps) % BOARD.length;
+  const to = (p.pos + steps) % boardFor(s).length;
   let next: GameState = { ...patch(base, id, { pos: to }), moving: true };
-  if (p.pos + steps >= BOARD.length) {
+  if (p.pos + steps >= boardFor(s).length) {
     next = say(move(patch(next, id, { laps: (p.laps ?? 0) + 1 }), BANK, id, startBonus(s), "Passou pelo Início"), `${p.name} passou pelo Início: +${money(startBonus(s))}`, "good");
   }
   return next;
@@ -318,7 +332,7 @@ export function roll(s: GameState, id: string, d1: number, d2: number, seenRollI
 export function land(s: GameState, pixId: string, luck: number = Math.random(), now: number = Date.now()): GameState {
   const p = current(s);
   let next: GameState = { ...s, moving: false };
-  const sq = BOARD[p.pos]!;
+  const sq = boardFor(s)[p.pos]!;
   switch (sq.kind) {
     case "property": {
       const owner = s.owners[p.pos];
@@ -353,8 +367,8 @@ export function land(s: GameState, pixId: string, luck: number = Math.random(), 
       return endTurn(checkBroke(say(next, `${sq.name}: ${p.name} pagou a rodada, ${money(each)} para cada jogador`, "bad"), p.id));
     }
     case "luck": {
-      const idx = Math.floor(luck * LUCK_CARDS.length) % LUCK_CARDS.length;
-      const card = LUCK_CARDS[idx]!;
+      const idx = Math.floor(luck * cardsFor(s).length) % cardsFor(s).length;
+      const card = cardsFor(s)[idx]!;
       const seq = (s.cardSeq ?? 0) + 1;
       next = { ...next, cardSeq: seq, card: { id: seq, playerId: p.id, text: card.text, good: card.amount > 0 || !!card.each || !!card.freeJail || card.goto !== undefined } };
       return say({ ...next, pending: { kind: "scratch", playerId: p.id, card: idx, since: now } }, `🎟️ ${p.name} está raspando uma Sorte ou Revés…`);
@@ -374,7 +388,7 @@ export function revealCard(s: GameState, id?: string): GameState {
 }
 function applyCard(s: GameState): GameState {
   const pd = s.pending as Extract<Pending, { kind: "scratch" }>;
-  const card = LUCK_CARDS[pd.card]!;
+  const card = cardsFor(s)[pd.card]!;
   let next: GameState = { ...s, pending: null };
   const p = next.players.find((x) => x.id === pd.playerId)!;
   if (card.freeJail) return endTurn(say(patch(next, p.id, { freeJail: (p.freeJail ?? 0) + 1 }), `Sorte: ${p.name} ganhou o cartão Saia Livre da Delegacia!`, "good"));
@@ -435,13 +449,13 @@ export function finishCollect(s: GameState, now = Date.now()): GameState {
 
 /** Rent: stations scale by count, utilities by dice, streets double with full color and multiply with barraquinhas. */
 export function rentFor(s: GameState, square: number): number {
-  const sq = BOARD[square]!;
+  const sq = boardFor(s)[square]!;
   const owner = s.owners[square];
   const base = sq.rent ?? 0;
   if (!owner || isMortgaged(s, square)) return owner ? 0 : base;
   const cityEvent = activeCityEvent(s);
   if (cityEvent?.kind === "temporal" && sq.group === 6) return 0;
-  const count = BOARD.filter((b, i) => b.group === sq.group && s.owners[i] === owner).length;
+  const count = boardFor(s).filter((b, i) => b.group === sq.group && s.owners[i] === owner).length;
   if (sq.group === 8) return base * 2 ** (count - 1) * (cityEvent?.kind === "feriado" ? 3 : 1);
   if (sq.group === 9) return (s.dice[0] + s.dice[1]) * (count >= 2 ? 10 : 4);
   const h = housesAt(s, square);
@@ -451,33 +465,33 @@ export function rentFor(s: GameState, square: number): number {
 
 /** Build one barraquinha (4th = Sobrado) on a street of a full color group the player owns. */
 export function build(s: GameState, id: string, square: number): GameState {
-  const sq = BOARD[square];
+  const sq = boardFor(s)[square];
   const p = s.players.find((x) => x.id === id);
   if (!sq || !p || p.out || s.phase !== "playing" || s.moving || sq.kind !== "property" || (sq.group ?? 9) > 7) return s;
   if (s.owners[square] !== id || !ownsGroup(s, id, sq.group!)) return s;
-  if (BOARD.some((b, i) => b.group === sq.group && isMortgaged(s, i))) return s;
+  if (boardFor(s).some((b, i) => b.group === sq.group && isMortgaged(s, i))) return s;
   const h = housesAt(s, square);
   const cost = houseCost(sq.group!);
   if (h >= MAX_HOUSES || p.balance < cost) return s;
   // Construção nivelada: build on the street with the fewest chalés of the color first.
-  if (BOARD.some((b, i) => b.group === sq.group && housesAt(s, i) < h)) return s;
+  if (boardFor(s).some((b, i) => b.group === sq.group && housesAt(s, i) < h)) return s;
   const next = move({ ...s, houses: { ...s.houses, [square]: h + 1 } }, id, BANK, cost, `Obra ${sq.name}`);
-  return say(next, `${p.name} construiu ${h + 1 === MAX_HOUSES ? "um Resort" : "um chalé"} em ${sq.name}`, "good");
+  return say(next, `${p.name} construiu ${h + 1 === MAX_HOUSES ? `um ${buildingName(s, true)}` : `${cityOf(s) === "boro" ? "uma" : "um"} ${buildingName(s)}`} em ${sq.name}`, "good");
 }
 
 export const houseSaleValue = (group: number) => Math.floor(houseCost(group) / 2);
 /** Vender chalé: the bank pays half the build cost. Demolition is uniform (most-built street first). */
 export function sellHouse(s: GameState, id: string, square: number): GameState {
-  const sq = BOARD[square];
+  const sq = boardFor(s)[square];
   const p = s.players.find((x) => x.id === id);
   if (!sq || !p || p.out || s.phase !== "playing" || s.moving || s.owners[square] !== id) return s;
   const h = housesAt(s, square);
-  if (h <= 0 || BOARD.some((b, i) => b.group === sq.group && housesAt(s, i) > h)) return s;
+  if (h <= 0 || boardFor(s).some((b, i) => b.group === sq.group && housesAt(s, i) > h)) return s;
   const houses: Record<string, number> = { ...s.houses, [square]: h - 1 };
   if (!houses[square]) delete houses[square];
   const value = houseSaleValue(sq.group!);
-  const next = move({ ...s, houses }, BANK, id, value, `Venda de chalé ${sq.name}`);
-  return say(next, `${p.name} vendeu ${h === MAX_HOUSES ? "o Resort" : "um chalé"} de ${sq.name} (+${money(value)})`, "info");
+  const next = move({ ...s, houses }, BANK, id, value, `Venda de ${buildingName(s)} ${sq.name}`);
+  return say(next, `${p.name} vendeu ${h === MAX_HOUSES ? `o ${buildingName(s, true)}` : `${cityOf(s) === "boro" ? "uma" : "um"} ${buildingName(s)}`} de ${sq.name} (+${money(value)})`, "info");
 }
 
 /** Player out: remaining money and lands go to the creditor (or back to the bank). */
@@ -503,8 +517,8 @@ function bankrupt(s: GameState, id: string, creditor: string, keepPending = fals
 /** Cash the player could still raise by mortgaging lands (no barraquinhas in their color). */
 export function liquidity(s: GameState, id: string): number {
   return Object.entries(s.owners).filter(([, o]) => o === id).reduce((t, [i]) => {
-    const g = BOARD[+i]!.group ?? 0;
-    return t + housesAt(s, +i) * houseSaleValue(g) + (isMortgaged(s, +i) ? 0 : mortgageValue(+i));
+    const g = boardFor(s)[+i]!.group ?? 0;
+    return t + housesAt(s, +i) * houseSaleValue(g) + (isMortgaged(s, +i) ? 0 : mortgageValue(+i, s));
   }, 0);
 }
 /** Owes more than the balance: open the Risco de Falência window if assets cover it, otherwise go bankrupt. */
@@ -534,7 +548,7 @@ export function giveUp(s: GameState, id: string): GameState {
 
 export function buy(s: GameState, id: string, accept: boolean, now: number = Date.now()): GameState {
   if (s.pending?.kind !== "buy" || s.pending.playerId !== id) return s;
-  const sq = BOARD[s.pending.square]!;
+  const sq = boardFor(s)[s.pending.square]!;
   let next: GameState = { ...s, pending: null };
   if (accept && (s.players.find((p) => p.id === id)?.balance ?? 0) >= (sq.price ?? 0)) {
     next = move({ ...next, owners: { ...s.owners, [s.pending.square]: id } }, id, BANK, sq.price ?? 0, `Compra ${sq.name}`);
@@ -546,12 +560,12 @@ export function buy(s: GameState, id: string, accept: boolean, now: number = Dat
 
 /** Leilão por vez: each player in turn order gets AUCTION_MS to raise or pass. Not before the 1st lap. */
 function startAuction(s: GameState, square: number, now: number, by: string): GameState {
-  if (((s.players.find((p) => p.id === by)?.laps) ?? 0) < 1) return endTurn(say(s, `${BOARD[square]!.name} continua à venda (leilão só depois da 1ª volta)`));
+  if (((s.players.find((p) => p.id === by)?.laps) ?? 0) < 1) return endTurn(say(s, `${boardFor(s)[square]!.name} continua à venda (leilão só depois da 1ª volta)`));
   const n = s.players.length;
   const start = s.players.findIndex((p) => p.id === by);
   const order = Array.from({ length: n }, (_, k) => s.players[(start + k) % n]!).filter((p) => !p.out && p.balance >= AUCTION_STEP).map((p) => p.id);
   if (!order.length) return endTurn(s);
-  return say({ ...s, pending: { kind: "auction", square, bid: 0, bidder: null, endsAt: now + AUCTION_MS, order, turn: 0 } }, `Leilão: ${BOARD[square]!.name}! Vez de ${nameOf(s, order[0]!)}`, "info");
+  return say({ ...s, pending: { kind: "auction", square, bid: 0, bidder: null, endsAt: now + AUCTION_MS, order, turn: 0 } }, `Leilão: ${boardFor(s)[square]!.name}! Vez de ${nameOf(s, order[0]!)}`, "info");
 }
 export const auctionTurn = (s: GameState) => (s.pending?.kind === "auction" ? s.pending.order[s.pending.turn] ?? null : null);
 
@@ -569,7 +583,7 @@ function nextBidder(s: GameState, pd: Extract<Pending, { kind: "auction" }>, ord
   return finishAuction(s, pd);
 }
 function finishAuction(s: GameState, pd: Extract<Pending, { kind: "auction" }>): GameState {
-  const sq = BOARD[pd.square]!;
+  const sq = boardFor(s)[pd.square]!;
   const next: GameState = { ...s, pending: null };
   if (!pd.bidder) return endTurn(say(next, `Ninguém deu lance em ${sq.name}`));
   const won = move({ ...next, owners: { ...s.owners, [pd.square]: pd.bidder } }, pd.bidder, BANK, pd.bid, `Leilão ${sq.name}`);
@@ -601,37 +615,37 @@ export function closeAuction(s: GameState, now: number = Date.now()): GameState 
 
 /** Hipoteca: bank pays half the price; the land stops charging rent. Needs no barraquinhas in its color. */
 export function mortgage(s: GameState, id: string, square: number): GameState {
-  const sq = BOARD[square];
+  const sq = boardFor(s)[square];
   if (!sq || s.phase !== "playing" || s.moving || s.owners[square] !== id || isMortgaged(s, square)) return s;
-  if (BOARD.some((b, i) => b.group === sq.group && housesAt(s, i) > 0)) return s;
-  const next = move({ ...s, mortgaged: { ...s.mortgaged, [square]: true } }, BANK, id, mortgageValue(square), `Hipoteca ${sq.name}`);
-  return say(next, `${nameOf(s, id)} hipotecou ${sq.name} (+${money(mortgageValue(square))})`, "info");
+  if (boardFor(s).some((b, i) => b.group === sq.group && housesAt(s, i) > 0)) return s;
+  const next = move({ ...s, mortgaged: { ...s.mortgaged, [square]: true } }, BANK, id, mortgageValue(square, s), `Hipoteca ${sq.name}`);
+  return say(next, `${nameOf(s, id)} hipotecou ${sq.name} (+${money(mortgageValue(square, s))})`, "info");
 }
 export function unmortgage(s: GameState, id: string, square: number): GameState {
-  const sq = BOARD[square];
+  const sq = boardFor(s)[square];
   const p = s.players.find((x) => x.id === id);
-  if (!sq || !p || s.moving || s.owners[square] !== id || !isMortgaged(s, square) || p.balance < unmortgageCost(square)) return s;
+  if (!sq || !p || s.moving || s.owners[square] !== id || !isMortgaged(s, square) || p.balance < unmortgageCost(square, s)) return s;
   const mortgaged = { ...s.mortgaged };
   delete mortgaged[square];
-  const next = move({ ...s, mortgaged }, id, BANK, unmortgageCost(square), `Resgate ${sq.name}`);
+  const next = move({ ...s, mortgaged }, id, BANK, unmortgageCost(square, s), `Resgate ${sq.name}`);
   return say(next, `${p.name} resgatou ${sq.name}`, "info");
 }
 
-const names = (l: number[]) => l.map((i) => BOARD[i]!.name).join(", ");
-const side = (l: number[], cash: number) => [l.length ? `[${names(l)}]` : "", cash > 0 ? money(cash) : ""].filter(Boolean).join(" + ") || "nada";
+const names = (s: GameState, l: number[]) => l.map((i) => boardFor(s)[i]!.name).join(", ");
+const side = (s: GameState, l: number[], cash: number) => [l.length ? `[${names(s, l)}]` : "", cash > 0 ? money(cash) : ""].filter(Boolean).join(" + ") || "nada";
 /** Plain-language summary of a negotiation. */
 export function offerText(s: GameState, o: Offer): string {
   const n = (id: string) => s.players.find((p) => p.id === id)?.name ?? "?";
   if (!Array.isArray(o.giveSquares) || !Array.isArray(o.wantSquares)) return `${n(o.from)} fez uma proposta para ${n(o.to)}`;
-  return `${n(o.from)} oferece ${side(o.giveSquares, o.cashFrom)} por ${side(o.wantSquares, o.cashTo)} de ${n(o.to)}`;
+  return `${n(o.from)} oferece ${side(s, o.giveSquares, o.cashFrom)} por ${side(s, o.wantSquares, o.cashTo)} de ${n(o.to)}`;
 }
 const owns = (s: GameState, id: string, sq: number) => s.owners[sq] === id && housesAt(s, sq) === 0;
-const clean = (l: unknown): number[] => [...new Set((Array.isArray(l) ? l : []).map(Number).filter((i) => Number.isInteger(i) && BOARD[i]?.kind === "property"))];
+const clean = (s: GameState, l: unknown): number[] => [...new Set((Array.isArray(l) ? l : []).map(Number).filter((i) => Number.isInteger(i) && boardFor(s)[i]?.kind === "property"))];
 /** Negociação: compra, venda ou permuta de vários imóveis, com dinheiro líquido num só sentido. */
 export function proposeTrade(s: GameState, from: string, to: string, give: number[], want: number[], cashFrom: number, cashTo: number, offerId: string): GameState {
   const other = s.players.find((p) => p.id === to);
   const me = s.players.find((p) => p.id === from);
-  const giveSquares = clean(give), wantSquares = clean(want);
+  const giveSquares = clean(s, give), wantSquares = clean(s, want);
   const net = Math.floor(Math.max(0, cashFrom || 0)) - Math.floor(Math.max(0, cashTo || 0));
   const cf = Math.max(0, net), ct = Math.max(0, -net);
   if (s.phase !== "playing" || s.offer || from === to || !other || !me || other.out || me.out) return s;
@@ -695,7 +709,7 @@ function endTurn(s: GameState): GameState {
     const round = (next.round ?? 0) + 1;
     let ev = activeCityEvent({ ...next, round });
     if (round % EVENT_EVERY === 0 && !ev) {
-      const e = CITY_EVENTS[(round / EVENT_EVERY - 1) % CITY_EVENTS.length]!;
+      const e = eventsFor(s)[(round / EVENT_EVERY - 1) % eventsFor(s).length]!;
       ev = e.kind === "padroeira" ? { ...e, expiresAt: Date.now() + CITY_EVENT_MS } : { ...e, until: round + 1 };
       next = say({ ...next, round, cityEvent: ev }, e.text, "info");
     } else next = { ...next, round, cityEvent: ev };
@@ -706,9 +720,9 @@ function endTurn(s: GameState): GameState {
 
 /** Who owns lands of the same color as `square` (excluding it). */
 export function groupOwners(s: GameState, square: number): { id: string; count: number }[] {
-  const g = BOARD[square]?.group;
+  const g = boardFor(s)[square]?.group;
   const m = new Map<string, number>();
-  BOARD.forEach((b, i) => { const o = s.owners[i]; if (b.group === g && i !== square && o) m.set(o, (m.get(o) ?? 0) + 1); });
+  boardFor(s).forEach((b, i) => { const o = s.owners[i]; if (b.group === g && i !== square && o) m.set(o, (m.get(o) ?? 0) + 1); });
   return [...m].map(([id, count]) => ({ id, count }));
 }
 
@@ -736,7 +750,7 @@ export function autoResolve(s: GameState): GameState {
   const pd = s.pending;
   if (s.phase !== "playing" || s.moving || !pd) return s;
   if (pd.kind === "buy") {
-    const sq = BOARD[pd.square]!;
+    const sq = boardFor(s)[pd.square]!;
     return endTurn(say({ ...s, pending: null }, `Tempo esgotado: ${nameOf(s, pd.playerId)} não comprou ${sq.name}`));
   }
   if (pd.kind === "pix") {

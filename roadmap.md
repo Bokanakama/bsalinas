@@ -32,4 +32,10 @@
 ## Pagamentos no jogo Salinas
 
 - [x] Remover geração e leitura de QR de pagamento, mantendo confirmação e dados existentes; preservar QR de entrada na sala.
-- [ ] Verificar pagamentos, transferências e saldos nas carteiras e no tabuleiro.
+- [x] Verificar pagamentos, transferências e saldos nas carteiras e no tabuleiro.
+
+## Cidade Boró no portal
+
+- [x] Destino interno /boro e salas com cidade persistida.
+- [x] Tabuleiro original, cartas, nomes de construções e notícias próprios, sem alterar Salinas.
+- [x] Mesma voz e notícias próprias; verificar duas cidades e pagamentos numa partida.

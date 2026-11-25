@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, ArrowUpRight, Building2, Dice5, MapPin, Waves } from "lucide-react";
+import { ArrowRight, Building2, Dice5, MapPin, Waves } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import cidadeboroCover from "@/assets/joga-brasil-cidadeboro.jpg";
 import salinasCover from "@/assets/joga-brasil-salinas.jpg";
@@ -31,11 +31,9 @@ function Home() {
           <p className="mt-4 flex items-center gap-2 text-xs font-semibold text-muted-foreground"><span className="size-1.5 rounded-full bg-primary" aria-hidden="true" />2 jogos disponíveis</p>
         </header>
         <section aria-label="Escolha seu jogo" className="grid gap-5 md:grid-cols-2 md:gap-7">
-          <a
-            href="https://cidadeboro.lovable.app"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Jogar CidadeBoró (abre em nova aba)"
+          <Link
+            to="/boro"
+            aria-label="Jogar CidadeBoró"
             className="city-destination group block min-w-0 overflow-hidden rounded-2xl border border-border bg-card text-card-foreground"
           >
             <div className="relative aspect-[16/9] overflow-hidden bg-muted">
@@ -45,9 +43,9 @@ function Home() {
             <div className="p-5 sm:p-6">
               <h2 className="font-display text-3xl">CidadeBoró</h2>
               <p className="mt-2 min-h-12 text-base leading-6 text-muted-foreground">Explore a cidade e descubra novas aventuras</p>
-              <span className={buttonVariants({ className: "mt-5 h-12 w-full justify-between rounded-xl px-4 text-sm font-bold group-hover:bg-primary/90" })} aria-hidden="true">JOGAR CIDADEBORÓ<ArrowUpRight className="size-5" /></span>
+              <span className={buttonVariants({ className: "mt-5 h-12 w-full justify-between rounded-xl px-4 text-sm font-bold group-hover:bg-primary/90" })} aria-hidden="true">JOGAR CIDADEBORÓ<ArrowRight className="size-5" /></span>
             </div>
-          </a>
+          </Link>
           <Link
             to="/salinas"
             aria-label="Jogar Salinas"

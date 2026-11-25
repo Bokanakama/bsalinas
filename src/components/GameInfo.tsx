@@ -1,4 +1,4 @@
-import { activeCityEvent, BOARD, groupOwners, money, type GameState } from "@/lib/game";
+import { activeCityEvent, boardFor, cityName, groupOwners, money, type GameState } from "@/lib/game";
 import { useEffect, useState } from "react";
 import { Animal } from "./Animal";
 
@@ -15,7 +15,7 @@ export function Gazette({ state, className = "" }: { state: GameState; className
   const left = Math.max(0, Math.ceil(((ev.expiresAt ?? now + 120_000) - now) / 1000));
   return (
     <div className={`cedula flex items-center gap-2 rounded-xl border-4 border-border px-3 py-1 shadow-[4px_4px_0_var(--foreground)] ${className}`}>
-      <span className="font-display uppercase text-primary">📰 Gazeta de Salinas</span>
+      <span className="font-display uppercase text-primary">📰 Gazeta de {cityName(state)}</span>
       <span className="flex-1 font-bold">{ev.text}</span>
       <span className="carimbo whitespace-nowrap px-1 text-xs text-destructive">{ev.expiresAt !== undefined ? `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}` : "nesta rodada"}</span>
     </div>
@@ -24,10 +24,10 @@ export function Gazette({ state, className = "" }: { state: GameState; className
 
 /** Mini título de propriedade for auctions: rent levels and who already owns that color. */
 export function TitleInfo({ state, square, big = false }: { state: GameState; square: number; big?: boolean }) {
-  const sq = BOARD[square]!;
+  const sq = boardFor(state)[square]!;
   const g = sq.group ?? 0;
   const owners = groupOwners(state, square);
-  const total = BOARD.filter((b) => b.group === g).length;
+  const total = boardFor(state).filter((b) => b.group === g).length;
   const rentLine =
     g === 8 ? "Aluguel B$ 25 · 50 · 100 · 200 (por rodoviária)" : g === 9 ? "Aluguel: dados ×4 (ou ×10 com as duas)" : `Aluguel ${money(sq.rent ?? 0)} · cor completa ${money((sq.rent ?? 0) * 2)}`;
   return (

@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as BoroRouteImport } from './routes/boro'
 import { Route as SalinasRouteImport } from './routes/salinas'
 import { Route as JogarCodeRouteImport } from './routes/jogar.$code'
 import { Route as MestreCodeRouteImport } from './routes/mestre.$code'
@@ -18,6 +19,11 @@ import { Route as ApiPublicCleanupRouteImport } from './routes/api/public/cleanu
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BoroRoute = BoroRouteImport.update({
+  id: '/boro',
+  path: '/boro',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SalinasRoute = SalinasRouteImport.update({
@@ -43,6 +49,7 @@ const ApiPublicCleanupRoute = ApiPublicCleanupRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/boro': typeof BoroRoute
   '/salinas': typeof SalinasRoute
   '/jogar/$code': typeof JogarCodeRoute
   '/mestre/$code': typeof MestreCodeRoute
@@ -50,6 +57,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/boro': typeof BoroRoute
   '/salinas': typeof SalinasRoute
   '/jogar/$code': typeof JogarCodeRoute
   '/mestre/$code': typeof MestreCodeRoute
@@ -58,6 +66,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/boro': typeof BoroRoute
   '/salinas': typeof SalinasRoute
   '/jogar/$code': typeof JogarCodeRoute
   '/mestre/$code': typeof MestreCodeRoute
@@ -66,13 +75,24 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/salinas' | '/jogar/$code' | '/mestre/$code' | '/api/public/cleanup'
+    | '/'
+    | '/boro'
+    | '/salinas'
+    | '/jogar/$code'
+    | '/mestre/$code'
+    | '/api/public/cleanup'
   fileRoutesByTo: FileRoutesByTo
   to:
-    '/' | '/salinas' | '/jogar/$code' | '/mestre/$code' | '/api/public/cleanup'
+    | '/'
+    | '/boro'
+    | '/salinas'
+    | '/jogar/$code'
+    | '/mestre/$code'
+    | '/api/public/cleanup'
   id:
     | '__root__'
     | '/'
+    | '/boro'
     | '/salinas'
     | '/jogar/$code'
     | '/mestre/$code'
@@ -81,6 +101,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  BoroRoute: typeof BoroRoute
   SalinasRoute: typeof SalinasRoute
   JogarCodeRoute: typeof JogarCodeRoute
   MestreCodeRoute: typeof MestreCodeRoute
@@ -94,6 +115,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/boro': {
+      id: '/boro'
+      path: '/boro'
+      fullPath: '/boro'
+      preLoaderRoute: typeof BoroRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/salinas': {
@@ -129,6 +157,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  BoroRoute: BoroRoute,
   SalinasRoute: SalinasRoute,
   JogarCodeRoute: JogarCodeRoute,
   MestreCodeRoute: MestreCodeRoute,

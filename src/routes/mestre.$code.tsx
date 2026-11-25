@@ -14,9 +14,9 @@ import { paymentText } from "@/lib/payment-text";
 export const Route = createFileRoute("/mestre/$code")({
   head: ({ params }) => ({
     meta: [
-      { title: `Tabuleiro ${params.code} — Banco Imobiliário Salinas` },
-      { name: "description", content: "Tabuleiro mestre e banco central da partida de Banco Imobiliário Salinas." },
-      { property: "og:title", content: "Tabuleiro — Banco Imobiliário Salinas" },
+      { title: `Tabuleiro ${params.code} — Banco Boró e Salinas` },
+      { name: "description", content: "Tabuleiro mestre e banco central da partida de Banco Boró e Salinas." },
+      { property: "og:title", content: "Tabuleiro — Banco Boró e Salinas" },
       { property: "og:description", content: "O banco central da partida: saldos, dados e movimentos." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -100,7 +100,7 @@ function Master() {
         setFocus(from);
         await new Promise((r) => setTimeout(r, 250));
         for (let k = 1; k <= d1 + d2; k++) {
-          setDisplayPos((d) => ({ ...d, [a.player_id]: (from + k) % G.BOARD.length }));
+          setDisplayPos((d) => ({ ...d, [a.player_id]: (from + k) % G.boardFor(s).length }));
           
           sfx.step();
           await new Promise((r) => setTimeout(r, 90));
@@ -109,7 +109,7 @@ function Master() {
         setFocus(null);
         await new Promise((r) => setTimeout(r, 150));
         s = G.land(ref.current!, crypto.randomUUID());
-        { const sq = G.BOARD[s.players.find((x) => x.id === a.player_id)?.pos ?? 0]; if (sq?.group === 8) sfx.trainWhistle(); else if (sq?.kind === "rest" || sq?.name.includes("Cafezinho")) sfx.coffeeCup(); }
+        { const sq = G.boardFor(s)[s.players.find((x) => x.id === a.player_id)?.pos ?? 0]; if (sq?.group === 8) sfx.trainWhistle(); else if (sq?.kind === "rest" || sq?.name.includes("Cafezinho")) sfx.coffeeCup(); }
         break;
       }
     }
@@ -258,7 +258,7 @@ function Master() {
     const t = paymentText(state.event.text);
     const clip: VoiceClip | null = state.phase === "over" ? "fim"
       : t.includes("ganhou o cartão Saia Livre") ? "saia_livre"
-      : state.cityEvent && t.includes(state.cityEvent.text) ? state.cityEvent.kind
+      : state.cityEvent && t.includes(state.cityEvent.text) ? (G.cityOf(state) === "boro" ? `boro_${state.cityEvent.kind}` : state.cityEvent.kind)
       : state.card && t.includes(state.card.text) ? (state.card.good ? "sorte" : "reves")
       : null;
     if (voiceOn && clip) voice.play(clip);
@@ -274,8 +274,8 @@ function Master() {
   const nameOf = (id: string) => state.players.find((p) => p.id === id)?.name;
 
   const rentInfo = pd?.kind === "pix" && pd.reason !== "Pix" ? (() => {
-    const sqIdx = G.BOARD.findIndex((b) => pd.reason === `Aluguel ${b.name}`);
-    const sq = G.BOARD[sqIdx];
+    const sqIdx = G.boardFor(state).findIndex((b) => pd.reason === `Aluguel ${b.name}`);
+    const sq = G.boardFor(state)[sqIdx];
     return { sq, doubled: sq && sq.group! < 8 && !G.housesAt(state, sqIdx) ? pd.amount > (sq.rent ?? 0) : false };
   })() : null;
   const fullscreen = () => { sfx.unlock(); if (document.fullscreenElement) void document.exitFullscreen(); else void document.documentElement.requestFullscreen?.().catch(() => {}); };
@@ -341,15 +341,15 @@ function Master() {
         })()}
         {pd?.kind === "buy" && (
           <div className="animate-pop rounded-xl border-4 border-border bg-secondary px-4 py-2 font-display">
-            <p className="text-[4.7cqw]">{nameOf(pd.playerId)} pode comprar {G.BOARD[pd.square]!.name}</p>
-            <p className="text-[3.6cqw]">Preço {G.money(G.BOARD[pd.square]!.price!)} · Aluguel {G.money(G.BOARD[pd.square]!.rent!)}</p>
+            <p className="text-[4.7cqw]">{nameOf(pd.playerId)} pode comprar {G.boardFor(state)[pd.square]!.name}</p>
+            <p className="text-[3.6cqw]">Preço {G.money(G.boardFor(state)[pd.square]!.price!)} · Aluguel {G.money(G.boardFor(state)[pd.square]!.rent!)}</p>
           </div>
         )}
         {pd?.kind === "auction" && (
           <div className={`animate-pop rounded-xl border-4 px-4 py-2 font-display ${pd.endsAt - now <= 5000 && now > 0 ? "animate-pulse border-destructive bg-secondary ring-4 ring-destructive" : "border-border bg-secondary"}`}>
             <p className="text-[3.6cqw] uppercase">{pd.endsAt - now <= 5000 && now > 0 ? "🔥 Últimos segundos! · " : ""}Leilão · vez de {nameOf(G.auctionTurn(state) ?? "")} · {Math.max(0, Math.ceil((pd.endsAt - now) / 1000))}s</p>
-            <p className="text-[5.8cqw] leading-tight">{G.BOARD[pd.square]!.name}</p>
-            <p className="text-[4.3cqw]">{pd.bidder ? `${nameOf(pd.bidder)} · ${G.money(pd.bid)}` : "Sem lances ainda"} · Tabela {G.money(G.BOARD[pd.square]!.price!)}</p>
+            <p className="text-[5.8cqw] leading-tight">{G.boardFor(state)[pd.square]!.name}</p>
+            <p className="text-[4.3cqw]">{pd.bidder ? `${nameOf(pd.bidder)} · ${G.money(pd.bid)}` : "Sem lances ainda"} · Tabela {G.money(G.boardFor(state)[pd.square]!.price!)}</p>
             <TitleInfo state={state} square={pd.square} big />
           </div>
         )}
@@ -383,7 +383,7 @@ function Master() {
   const side = (
     <>
       <div className="flex items-center gap-2 rounded-xl bg-primary px-3 py-[0.6vh] text-primary-foreground shadow-[var(--shadow-soft)]">
-        <span className="flex-1 font-display text-[clamp(13px,2.6vh,28px)]">Banco Imobiliário Salinas</span>
+        <span className="flex-1 font-display text-[clamp(13px,2.6vh,28px)]">{G.cityOf(state) === "boro" ? "Cidade Boró" : "Banco Imobiliário Salinas"}</span>
         <span className="font-display tracking-widest text-[clamp(12px,2.2vh,24px)]">{code}</span>
         <button onClick={() => setPaused(true)} aria-label="Pausar" className="min-h-10 rounded-lg border-2 border-primary-foreground px-2 font-display">❚❚</button>
       </div>
@@ -401,7 +401,7 @@ function Master() {
                 <p className={`font-display text-[clamp(12px,2.6vh,30px)] leading-none ${p.balance < 0 ? "text-destructive" : ""}`}>{G.money(p.balance)}</p>
                 {!p.out && state.phase !== "lobby" && <p className="truncate text-[clamp(9px,1.4vh,15px)] text-muted-foreground">Patrimônio {G.money(G.netWorth(state, p.id))}</p>}
                 <div className="mt-0.5 flex flex-wrap gap-0.5">
-                  {props.map(([sq]) => <span key={sq} title={G.BOARD[+sq]!.name} className="h-[1vh] w-[1.5vh] rounded-sm border border-border" style={{ background: `var(--group-${G.BOARD[+sq]!.group})` }} />)}
+                  {props.map(([sq]) => <span key={sq} title={G.boardFor(state)[+sq]!.name} className="h-[1vh] w-[1.5vh] rounded-sm border border-border" style={{ background: `var(--group-${G.boardFor(state)[+sq]!.group})` }} />)}
                 </div>
               </div>
             </button>
@@ -421,7 +421,7 @@ function Master() {
   );
 
   return (
-    <main className="azulejo relative flex h-dvh items-center justify-center overflow-hidden p-[1vmin]">
+    <main className={`${G.cityOf(state) === "boro" ? "boro-game " : ""}azulejo relative flex h-dvh items-center justify-center overflow-hidden p-[1vmin]`}>
       <div className="flex size-full min-h-0 min-w-0 items-center justify-center" style={{ containerType: "size" }}>
         <Board state={state} center={center} side={side} displayPos={displayPos} focus={focus} />
       </div>

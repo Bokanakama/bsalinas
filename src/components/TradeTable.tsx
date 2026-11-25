@@ -17,14 +17,14 @@ export function TradeTable({ state, pid, initialTo, initialGive, onSend, onClose
   const [payMe, setPayMe] = useState("");
   const [payThem, setPayThem] = useState("");
   const other = state.players.find((p) => p.id === to);
-  const tradable = (id: string) => G.BOARD.map((b, i) => ({ b, i })).filter(({ i }) => state.owners[i] === id && G.housesAt(state, i) === 0);
+  const tradable = (id: string) => G.boardFor(state).map((b, i) => ({ b, i })).filter(({ i }) => state.owners[i] === id && G.housesAt(state, i) === 0);
   const toggle = (l: number[], set: (v: number[]) => void, i: number) => set(l.includes(i) ? l.filter((x) => x !== i) : [...l, i]);
   const cf = Number(payMe) || 0, ct = Number(payThem) || 0;
   const ok = !!other && (give.length > 0 || want.length > 0) && cf <= me.balance;
   const preview: G.Offer | null = other ? { id: "p", from: pid, to, giveSquares: give, wantSquares: want, cashFrom: Math.max(0, cf - ct), cashTo: Math.max(0, ct - cf) } : null;
   const list = (id: string, sel: number[], set: (v: number[]) => void) => {
     const l = tradable(id);
-    if (!l.length) return <p className="text-xs text-muted-foreground">Nenhum imóvel disponível (sem chalés).</p>;
+    if (!l.length) return <p className="text-xs text-muted-foreground">Nenhum imóvel disponível (sem {G.buildingName(state, false, true)}).</p>;
     return (
       <div className="grid grid-cols-2 gap-1.5">
         {l.map(({ b, i }) => (
