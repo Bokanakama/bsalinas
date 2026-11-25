@@ -1,4 +1,5 @@
 import { BORO_BOARD, BORO_CARDS, BORO_EVENTS } from "./boro";
+import { BEAST_BITE, BEAST_START, RELIC_NAMES, RELIC_SQUARES, RELIC_STEAL, SELVA_BOARD, SELVA_CARDS, SELVA_EVENTS } from "./selva";
 // Pure game rules for Banco Imobiliário Salinas. The master device is the only writer of GameState.
 export type SquareKind = "start" | "property" | "toll" | "fine" | "bonus" | "rest" | "luck" | "gojail" | "samba";
 export interface Square {
@@ -8,6 +9,8 @@ export interface Square {
   rent?: number;
   amount?: number;
   group?: number;
+  /** Selva: index of the relic found on this square. */
+  relic?: number;
 }
 
 export const START_BONUS = 200;
@@ -125,14 +128,17 @@ export const LUCK_CARDS: LuckCard[] = [
   { text: "Passe Livre da Delegacia de Salinas! Guarde este cartão", amount: 0, freeJail: true },
 ];
 
-export const cityOf = (s?: Pick<GameState, "city">) => s?.city === "boro" ? "boro" : "salinas";
-export const boardFor = (s?: Pick<GameState, "city">) => cityOf(s) === "boro" ? BORO_BOARD : BOARD;
-export const cardsFor = (s: GameState) => cityOf(s) === "boro" ? BORO_CARDS : LUCK_CARDS;
-export const eventsFor = (s: GameState) => cityOf(s) === "boro" ? BORO_EVENTS : CITY_EVENTS;
-export const cityName = (s: GameState) => cityOf(s) === "boro" ? "Cidade Boró" : "Salinas";
-export const buildingName = (s: GameState, hotel = false, plural = false) => cityOf(s) === "boro"
-  ? (hotel ? (plural ? "sobrados" : "sobrado") : (plural ? "barracas" : "barraca"))
-  : (hotel ? (plural ? "resorts" : "resort") : (plural ? "chalés" : "chalé"));
+export const cityOf = (s?: Pick<GameState, "city">): CityId => s?.city === "boro" || s?.city === "selva" ? s.city : "salinas";
+export const boardFor = (s?: Pick<GameState, "city">) => ({ salinas: BOARD, boro: BORO_BOARD, selva: SELVA_BOARD })[cityOf(s)];
+export const cardsFor = (s: GameState) => ({ salinas: LUCK_CARDS, boro: BORO_CARDS, selva: SELVA_CARDS })[cityOf(s)];
+export const eventsFor = (s: GameState) => ({ salinas: CITY_EVENTS, boro: BORO_EVENTS, selva: SELVA_EVENTS })[cityOf(s)];
+export const cityName = (s: GameState) => ({ salinas: "Salinas", boro: "Cidade Boró", selva: "Selva dos Tambores" })[cityOf(s)];
+/** Feminine building names take "uma". */
+export const buildingArticle = (s: GameState) => (cityOf(s) === "salinas" ? "um" : "uma");
+export const buildingName = (s: GameState, hotel = false, plural = false) => {
+  const [h, hp, b, bp] = ({ salinas: ["resort", "resorts", "chalé", "chalés"], boro: ["sobrado", "sobrados", "barraca", "barracas"], selva: ["templo", "templos", "cabana", "cabanas"] })[cityOf(s)];
+  return hotel ? (plural ? hp : h) : (plural ? bp : b);
+};
 
 export const PLAYER_COLORS = ["#d9480f", "#1864ab", "#2b8a3e", "#e8a317", "#862e9c", "#c2255c"];
 export const ANIMALS = [
@@ -176,7 +182,7 @@ export type Pending =
   /** Cobrança coletiva: every other active player taps "Enviar Boró" to pay `targetId`. */
   | { kind: "collect"; targetId: string; amount: number; reason: string; paid: string[]; endsAt: number };
 
-export type CityId = "salinas" | "boro";
+export type CityId = "salinas" | "boro" | "selva";
 export interface GameState {
   /** Missing city in existing rooms means Salinas. */
   city?: CityId;
@@ -202,10 +208,15 @@ export interface GameState {
   card?: { id: number; playerId: string; text: string; good: boolean } | null;
   /** Monotonic raspadinha counter so every card gets a fresh id. */
   cardSeq?: number;
+  /** Selva: square of the Onça (neutral beast). */
+  beast?: number;
+  /** Selva: relic index -> holder player id. */
+  relics?: Record<string, string>;
 }
 
 export const newState = (city: CityId = "salinas"): GameState => ({
   city,
+  ...(city === "selva" ? { beast: BEAST_START, relics: {} } : {}),
   phase: "lobby",
   players: [],
   turn: 0,
@@ -325,8 +336,38 @@ export function roll(s: GameState, id: string, d1: number, d2: number, seenRollI
   if (p.pos + steps >= boardFor(s).length) {
     next = say(move(patch(next, id, { laps: (p.laps ?? 0) + 1 }), BANK, id, startBonus(s), "Passou pelo Início"), `${p.name} passou pelo Início: +${money(startBonus(s))}`, "good");
   }
+  return cityOf(s) === "selva" ? beastStep(next, id, dbl ? steps : 0) : next;
+}
+
+/** Selva: doubles wake the Onça, which runs `steps` squares; sharing her square costs a bite paid to the bank. */
+export function beastStep(s: GameState, id: string, steps: number): GameState {
+  const size = boardFor(s).length;
+  const beast = ((s.beast ?? BEAST_START) + steps) % size;
+  let next: GameState = { ...s, beast };
+  if (steps) next = say(next, `🐆 A Onça acordou e correu ${steps} casas!`, "info");
+  const p = next.players.find((x) => x.id === id);
+  if (!p || p.pos !== beast) return next;
+  const bite = Math.min(BEAST_BITE, Math.max(0, p.balance));
+  return say(bite ? move(next, id, BANK, bite, "Mordida da Onça") : next, `🐆 A Onça pegou ${p.name}: −${money(bite)}`, "bad");
+}
+
+/** Selva: land on a relic square to claim it, or pay its holder to steal it; 3 relics win the game. */
+export function claimRelic(s: GameState, id: string, relic: number): GameState {
+  const p = s.players.find((x) => x.id === id)!;
+  const holder = s.relics?.[relic];
+  const name = RELIC_NAMES[relic] ?? "Relíquia";
+  if (holder === id) return say(s, `${p.name} já guarda o ${name}`);
+  let next = s;
+  if (holder) {
+    if (p.balance < RELIC_STEAL) return say(s, `${p.name} não tem ${money(RELIC_STEAL)} para roubar o ${name}`, "bad");
+    next = move(next, id, holder, RELIC_STEAL, `Roubo da relíquia ${name}`);
+  }
+  const relics: Record<string, string> = { ...(next.relics ?? {}), [relic]: id };
+  next = say({ ...next, relics }, holder ? `💎 ${p.name} roubou o ${name} de ${nameOf(s, holder)}!` : `💎 ${p.name} encontrou o ${name}!`, "good");
+  if (RELIC_SQUARES.every((_, k) => relics[k] === id)) next = say({ ...next, phase: "over", winner: id }, `${p.name} reuniu as 3 relíquias e venceu a Selva!`, "good");
   return next;
 }
+export const relicCount = (s: GameState, id: string) => Object.values(s.relics ?? {}).filter((h) => h === id).length;
 
 /** Step 2: resolve the square the player landed on. */
 export function land(s: GameState, pixId: string, luck: number = Math.random(), now: number = Date.now()): GameState {
@@ -357,6 +398,7 @@ export function land(s: GameState, pixId: string, luck: number = Math.random(), 
     case "gojail":
       return endTurn(sendToJail(next, p.id, "foi pego pela polícia"));
     case "bonus":
+      if (sq.relic !== undefined) return endTurn(claimRelic(next, p.id, sq.relic));
       next = move(next, BANK, p.id, sq.amount ?? 0, sq.name);
       return endTurn(say(next, `${sq.name}: ${p.name} ganhou ${money(sq.amount ?? 0)}`, "good"));
     case "samba": {
@@ -477,7 +519,7 @@ export function build(s: GameState, id: string, square: number): GameState {
   // Construção nivelada: build on the street with the fewest chalés of the color first.
   if (boardFor(s).some((b, i) => b.group === sq.group && housesAt(s, i) < h)) return s;
   const next = move({ ...s, houses: { ...s.houses, [square]: h + 1 } }, id, BANK, cost, `Obra ${sq.name}`);
-  return say(next, `${p.name} construiu ${h + 1 === MAX_HOUSES ? `um ${buildingName(s, true)}` : `${cityOf(s) === "boro" ? "uma" : "um"} ${buildingName(s)}`} em ${sq.name}`, "good");
+  return say(next, `${p.name} construiu ${h + 1 === MAX_HOUSES ? `um ${buildingName(s, true)}` : `${buildingArticle(s)} ${buildingName(s)}`} em ${sq.name}`, "good");
 }
 
 export const houseSaleValue = (group: number) => Math.floor(houseCost(group) / 2);
@@ -492,7 +534,7 @@ export function sellHouse(s: GameState, id: string, square: number): GameState {
   if (!houses[square]) delete houses[square];
   const value = houseSaleValue(sq.group!);
   const next = move({ ...s, houses }, BANK, id, value, `Venda de ${buildingName(s)} ${sq.name}`);
-  return say(next, `${p.name} vendeu ${h === MAX_HOUSES ? `o ${buildingName(s, true)}` : `${cityOf(s) === "boro" ? "uma" : "um"} ${buildingName(s)}`} de ${sq.name} (+${money(value)})`, "info");
+  return say(next, `${p.name} vendeu ${h === MAX_HOUSES ? `o ${buildingName(s, true)}` : `${buildingArticle(s)} ${buildingName(s)}`} de ${sq.name} (+${money(value)})`, "info");
 }
 
 /** Player out: remaining money and lands go to the creditor (or back to the bank). */

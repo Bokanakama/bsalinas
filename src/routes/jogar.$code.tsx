@@ -143,7 +143,7 @@ function Wallet() {
   const touchesMe = t && (t.from === pid || t.to === pid);
 
   return (
-    <main className={`${G.cityOf(state) === "boro" ? "boro-game " : ""}azulejo mx-auto flex min-h-dvh max-w-md flex-col gap-3 p-3`}>
+    <main className={`${G.cityOf(state) === "salinas" ? "" : `${G.cityOf(state)}-game `}azulejo mx-auto flex min-h-dvh max-w-md flex-col gap-3 p-3`}>
       {netFail && (
         <button role="alert" onClick={() => setNetFail(false)} className="sticky top-2 z-50 rounded-xl border-4 border-border bg-destructive px-3 py-2 text-sm font-bold text-destructive-foreground">
           📶 Sua jogada não chegou ao tabuleiro. Confira a internet e toque de novo.
@@ -403,7 +403,7 @@ function Neighborhoods({ state, pid, balance, act, onSell, onInspect, onTrade }:
                           </>
                         )}
                         {h > 0 && (
-                          <button disabled={state.moving || G.boardFor(state).some((x, j) => x.group === g && G.housesAt(state, j) > h)} onClick={() => { if (window.confirm(`Vender ${h >= G.MAX_HOUSES ? `o ${G.buildingName(state, true)}` : `${G.cityOf(state) === "boro" ? "uma" : "um"} ${G.buildingName(state)}`} de ${G.boardFor(state)[i]!.name} por ${G.money(G.houseSaleValue(g))}?`)) act("sellHouse", { square: i }); }} className="min-h-8 rounded-lg bg-muted px-2 py-1 text-xs font-semibold disabled:opacity-40">
+                          <button disabled={state.moving || G.boardFor(state).some((x, j) => x.group === g && G.housesAt(state, j) > h)} onClick={() => { if (window.confirm(`Vender ${h >= G.MAX_HOUSES ? `o ${G.buildingName(state, true)}` : `${G.buildingArticle(state)} ${G.buildingName(state)}`} de ${G.boardFor(state)[i]!.name} por ${G.money(G.houseSaleValue(g))}?`)) act("sellHouse", { square: i }); }} className="min-h-8 rounded-lg bg-muted px-2 py-1 text-xs font-semibold disabled:opacity-40">
                             Vender {G.buildingName(state, h >= G.MAX_HOUSES)} +{G.money(G.houseSaleValue(g))}
                           </button>
                         )}

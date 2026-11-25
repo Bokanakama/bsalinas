@@ -52,7 +52,7 @@ export const music = {
 };
 
 // Narração com áudios gravados (funciona em navegadores de TV sem voz do sistema).
-export type VoiceClip = "sorte" | "reves" | "dupla1" | "dupla2" | "tres_duplas" | "saia_livre" | "feriado" | "temporal" | "padroeira" | "fim" | "boro_feriado" | "boro_temporal" | "boro_padroeira";
+export type VoiceClip = "sorte" | "reves" | "dupla1" | "dupla2" | "tres_duplas" | "saia_livre" | "feriado" | "temporal" | "padroeira" | "fim" | "boro_feriado" | "boro_temporal" | "boro_padroeira" | "selva_feriado" | "selva_temporal" | "selva_padroeira";
 let current: HTMLAudioElement | null = null;
 export const voice = {
   play(clip: VoiceClip) {

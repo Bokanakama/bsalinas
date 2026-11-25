@@ -113,8 +113,11 @@ export function Board({ state, center, side, displayPos, focus }: { state: GameS
           const full = !!owner && (sq.group ?? 9) < 8 && ownsGroup(state, owner.id, sq.group!);
           const mort = isMortgaged(state, i);
           const horiz = side === "left" || side === "right";
+          const relicHolder = sq.relic !== undefined ? state.players.find((p) => p.id === state.relics?.[sq.relic!]) : undefined;
           const tokens = (
             <div className="pointer-events-none absolute inset-x-0 top-[1%] z-20 flex justify-center gap-[0.1cqw]">
+              {state.beast === i && <span role="img" aria-label="Onça" className="animate-hop text-[2.2cqw] leading-none drop-shadow">🐆</span>}
+              {sq.relic !== undefined && <span role="img" aria-label={relicHolder ? `Relíquia com ${relicHolder.name}` : "Relíquia livre"} className="text-[1.8cqw] leading-none" style={relicHolder ? { filter: `drop-shadow(0 0 0.3cqw ${relicHolder.color})` } : undefined}>💎</span>}
               {here.map((p) => <Animal key={`${p.id}-${displayPos[p.id] ?? p.pos}`} id={p.animal} badge alt={p.name} className={`animate-hop h-[2.4cqw] w-auto rounded-full ring-1 ring-foreground/40 drop-shadow-[0_2px_2px_color-mix(in_oklab,var(--foreground)_35%,transparent)] ${p.id === turnId ? "scale-110" : "opacity-90"}`} />)}
             </div>
           );
@@ -126,7 +129,7 @@ export function Board({ state, center, side, displayPos, focus }: { state: GameS
             return (
               <button type="button" onClick={() => setPicked(i)} key={i} style={{ gridRow: r, gridColumn: c }} className={`${base} flex flex-col items-center justify-center gap-[0.25cqw] rounded-[1cqw] p-[0.4cqw] text-center overflow-hidden ${k.tone}`}>
                 <Icon name={k.icon} className="size-[2.8cqw] shrink-0" />
-                <span className="max-w-full break-words font-display text-[1.25cqw] leading-none">{cityOf(state) === "boro" ? sq.name.replace(" (visita)", "") : k.title}</span>
+                <span className="max-w-full break-words font-display text-[1.25cqw] leading-none">{cityOf(state) !== "salinas" ? sq.name.replace(" (visita)", "") : k.title}</span>
                 <span className="rounded-full bg-card/80 px-[0.6cqw] py-[0.1cqw] text-[0.88cqw] font-semibold shrink-0 text-foreground max-w-full truncate">{i === 0 ? `+${money(startBonus(state))}` : k.tag}</span>
                 {tokens}
               </button>

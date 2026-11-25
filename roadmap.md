@@ -39,3 +39,7 @@
 - [x] Destino interno /boro e salas com cidade persistida.
 - [x] Tabuleiro original, cartas, nomes de construções e notícias próprios, sem alterar Salinas.
 - [x] Mesma voz e notícias próprias; verificar duas cidades e pagamentos numa partida.
+
+## Selva dos Tambores
+
+- [x] Mapa /selva com 56 casas, cartas, notícias, Onça, relíquias e mesma voz.

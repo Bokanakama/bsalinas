@@ -258,7 +258,7 @@ function Master() {
     const t = paymentText(state.event.text);
     const clip: VoiceClip | null = state.phase === "over" ? "fim"
       : t.includes("ganhou o cartão Saia Livre") ? "saia_livre"
-      : state.cityEvent && t.includes(state.cityEvent.text) ? (G.cityOf(state) === "boro" ? `boro_${state.cityEvent.kind}` : state.cityEvent.kind)
+      : state.cityEvent && t.includes(state.cityEvent.text) ? (G.cityOf(state) === "salinas" ? state.cityEvent.kind : `${G.cityOf(state) as "boro" | "selva"}_${state.cityEvent.kind}` as VoiceClip)
       : state.card && t.includes(state.card.text) ? (state.card.good ? "sorte" : "reves")
       : null;
     if (voiceOn && clip) voice.play(clip);
@@ -383,7 +383,7 @@ function Master() {
   const side = (
     <>
       <div className="flex items-center gap-2 rounded-xl bg-primary px-3 py-[0.6vh] text-primary-foreground shadow-[var(--shadow-soft)]">
-        <span className="flex-1 font-display text-[clamp(13px,2.6vh,28px)]">{G.cityOf(state) === "boro" ? "Cidade Boró" : "Banco Imobiliário Salinas"}</span>
+        <span className="flex-1 font-display text-[clamp(13px,2.6vh,28px)]">{G.cityOf(state) === "salinas" ? "Banco Imobiliário Salinas" : G.cityName(state)}</span>
         <span className="font-display tracking-widest text-[clamp(12px,2.2vh,24px)]">{code}</span>
         <button onClick={() => setPaused(true)} aria-label="Pausar" className="min-h-10 rounded-lg border-2 border-primary-foreground px-2 font-display">❚❚</button>
       </div>
@@ -421,7 +421,7 @@ function Master() {
   );
 
   return (
-    <main className={`${G.cityOf(state) === "boro" ? "boro-game " : ""}azulejo relative flex h-dvh items-center justify-center overflow-hidden p-[1vmin]`}>
+    <main className={`${G.cityOf(state) === "salinas" ? "" : `${G.cityOf(state)}-game `}azulejo relative flex h-dvh items-center justify-center overflow-hidden p-[1vmin]`}>
       <div className="flex size-full min-h-0 min-w-0 items-center justify-center" style={{ containerType: "size" }}>
         <Board state={state} center={center} side={side} displayPos={displayPos} focus={focus} />
       </div>

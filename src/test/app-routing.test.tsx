@@ -7,6 +7,10 @@ import { routeTree } from "@/routeTree.gen";
 // Match routes without running loaders or rendering: loaders may need a server or
 // network the test run lacks, and jsdom never loads the stylesheets React waits on.
 describe("App routing", () => {
+  it("registers Selva internally at /selva", () => {
+    const router = createRouter({ routeTree, context: { queryClient: new QueryClient() } });
+    expect(router.matchRoutes("/selva").at(-1)?.routeId).toBe("/selva");
+  });
   it("registers Cidade Boró internally at /boro", () => {
     const router = createRouter({ routeTree, context: { queryClient: new QueryClient() } });
     expect(router.matchRoutes("/boro").at(-1)?.routeId).toBe("/boro");

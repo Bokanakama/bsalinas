@@ -39,3 +39,4 @@ use the editor.
 
 - Resolve boards, cards, events and building labels from each room’s city via pure selectors; missing city means Salinas, so simultaneous cities and legacy rooms remain isolated.
 - Creating a Boró room persists its city through the existing master-only gateway before opening its board; no new table or alternate room access path is needed.
+- Selva-only mechanics (Onça beast, relic victory) are pure functions in game.ts gated by cityOf(s) === "selva"; other cities never receive beast/relics state.

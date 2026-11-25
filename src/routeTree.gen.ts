@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as BoroRouteImport } from './routes/boro'
 import { Route as SalinasRouteImport } from './routes/salinas'
+import { Route as SelvaRouteImport } from './routes/selva'
 import { Route as JogarCodeRouteImport } from './routes/jogar.$code'
 import { Route as MestreCodeRouteImport } from './routes/mestre.$code'
 import { Route as ApiPublicCleanupRouteImport } from './routes/api/public/cleanup'
@@ -29,6 +30,11 @@ const BoroRoute = BoroRouteImport.update({
 const SalinasRoute = SalinasRouteImport.update({
   id: '/salinas',
   path: '/salinas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SelvaRoute = SelvaRouteImport.update({
+  id: '/selva',
+  path: '/selva',
   getParentRoute: () => rootRouteImport,
 } as any)
 const JogarCodeRoute = JogarCodeRouteImport.update({
@@ -51,6 +57,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/boro': typeof BoroRoute
   '/salinas': typeof SalinasRoute
+  '/selva': typeof SelvaRoute
   '/jogar/$code': typeof JogarCodeRoute
   '/mestre/$code': typeof MestreCodeRoute
   '/api/public/cleanup': typeof ApiPublicCleanupRoute
@@ -59,6 +66,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/boro': typeof BoroRoute
   '/salinas': typeof SalinasRoute
+  '/selva': typeof SelvaRoute
   '/jogar/$code': typeof JogarCodeRoute
   '/mestre/$code': typeof MestreCodeRoute
   '/api/public/cleanup': typeof ApiPublicCleanupRoute
@@ -68,6 +76,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/boro': typeof BoroRoute
   '/salinas': typeof SalinasRoute
+  '/selva': typeof SelvaRoute
   '/jogar/$code': typeof JogarCodeRoute
   '/mestre/$code': typeof MestreCodeRoute
   '/api/public/cleanup': typeof ApiPublicCleanupRoute
@@ -78,6 +87,7 @@ export interface FileRouteTypes {
     | '/'
     | '/boro'
     | '/salinas'
+    | '/selva'
     | '/jogar/$code'
     | '/mestre/$code'
     | '/api/public/cleanup'
@@ -86,6 +96,7 @@ export interface FileRouteTypes {
     | '/'
     | '/boro'
     | '/salinas'
+    | '/selva'
     | '/jogar/$code'
     | '/mestre/$code'
     | '/api/public/cleanup'
@@ -94,6 +105,7 @@ export interface FileRouteTypes {
     | '/'
     | '/boro'
     | '/salinas'
+    | '/selva'
     | '/jogar/$code'
     | '/mestre/$code'
     | '/api/public/cleanup'
@@ -103,6 +115,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   BoroRoute: typeof BoroRoute
   SalinasRoute: typeof SalinasRoute
+  SelvaRoute: typeof SelvaRoute
   JogarCodeRoute: typeof JogarCodeRoute
   MestreCodeRoute: typeof MestreCodeRoute
   ApiPublicCleanupRoute: typeof ApiPublicCleanupRoute
@@ -129,6 +142,13 @@ declare module '@tanstack/react-router' {
       path: '/salinas'
       fullPath: '/salinas'
       preLoaderRoute: typeof SalinasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/selva': {
+      id: '/selva'
+      path: '/selva'
+      fullPath: '/selva'
+      preLoaderRoute: typeof SelvaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/jogar/$code': {
@@ -159,6 +179,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BoroRoute: BoroRoute,
   SalinasRoute: SalinasRoute,
+  SelvaRoute: SelvaRoute,
   JogarCodeRoute: JogarCodeRoute,
   MestreCodeRoute: MestreCodeRoute,
   ApiPublicCleanupRoute: ApiPublicCleanupRoute,
