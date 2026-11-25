@@ -3,7 +3,7 @@ import { BEAST_BITE, RELIC_NAMES, RELIC_STEAL } from "@/lib/selva";
 import { Button } from "@/components/ui/button";
 
 export const SELVA_STEPS = [
-  { icon: "🐆", title: "O Despertar da Onça", text: `Toda dupla nos dados acorda a Onça, que corre sozinha pelo tabuleiro. Parou na casa dela, ou ela caiu na sua? Perde B$ ${BEAST_BITE}.` },
+  { icon: "🐆", title: "O Despertar da Onça", text: `Toda dupla nos dados acorda a Onça, que corre sozinha pelo tabuleiro. Se ela parar na mesma casa de quem tirou a dupla, essa pessoa perde B$ ${BEAST_BITE}.` },
   { icon: "💎", title: "As 3 Relíquias", text: `${RELIC_NAMES.join(", ")}. Pare na casa da relíquia para pegá-la. Já tem dono? Pague B$ ${RELIC_STEAL} a ele e roube.` },
   { icon: "🛖", title: "Cabanas e Templos", text: "Feche um grupo de terrenos para construir cabanas. Com 4 cabanas, ergue um templo e o aluguel dispara." },
   { icon: "🏆", title: "Duas formas de vencer", text: "Junte as 3 relíquias e vença na hora — ou seja o último de pé quando os rivais falirem." },
