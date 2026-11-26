@@ -121,7 +121,7 @@ export function Board({ state, center, side, displayPos, focus }: { state: GameS
               {here.map((p) => <Animal key={`${p.id}-${displayPos[p.id] ?? p.pos}`} id={p.animal} badge alt={p.name} className={`animate-hop h-[2.4cqw] w-auto rounded-full ring-1 ring-foreground/40 drop-shadow-[0_2px_2px_color-mix(in_oklab,var(--foreground)_35%,transparent)] ${p.id === turnId ? "scale-110" : "opacity-90"}`} />)}
             </div>
           );
-          const ring = focus === i ? "animate-glow z-20 ring-4 ring-secondary ring-offset-2 ring-offset-background" : full ? "ring-2 ring-secondary" : "";
+          const ring = focus === i ? "animate-glow z-20 ring-4 ring-secondary ring-offset-2 ring-offset-background" : full ? "monopoly-glow z-10" : "";
           const base = `relative overflow-hidden text-left shadow-[0_1px_0_color-mix(in_oklab,var(--foreground)_10%,transparent)] transition-[transform,box-shadow] duration-200 hover:z-20 hover:-translate-y-[0.15cqw] ${ring}`;
 
           if (CORNER[i]) {

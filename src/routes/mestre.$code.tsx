@@ -42,6 +42,7 @@ function Master() {
   const [song, setSong] = useState(false);
   const [now, setNow] = useState(0);
   useEffect(() => () => music.stop(), []);
+  const [reactions, setReactions] = useState<{ id: string; emoji: string; name: string; color: string; x: number }[]>([]);
   const ref = useRef<G.GameState | null>(null);
   const seen = useRef(new Set<string>());
   const queue = useRef(Promise.resolve());
@@ -82,6 +83,13 @@ function Master() {
       case "sellHouse": s = G.sellHouse(s, a.player_id, Number((p as { square?: number }).square)); break;
       case "autoResolve": s = G.autoResolve(s); break;
       case "skipTurn": s = G.skipTurn(s); break;
+      case "dismissAuction": s = G.dismissAuction(s); break;
+      case "react": {
+        const e = (p as { emoji?: unknown }).emoji;
+        const who = s.players.find((x) => x.id === a.player_id);
+        if (who && G.isReaction(e)) { const id = a.id; setReactions((r) => [...r.slice(-11), { id, emoji: e, name: who.name, color: who.color, x: 8 + Math.random() * 84 }]); sfx.pop(); setTimeout(() => setReactions((r) => r.filter((z) => z.id !== id)), 3200); }
+        return;
+      }
       case "kick": s = G.kickPlayer(s, String(p.id)); break;
       case "roll": {
         const before = s;
@@ -254,6 +262,17 @@ function Master() {
     if (state && !state.moving) setDisplayPos(Object.fromEntries(state.players.map((p) => [p.id, p.pos])));
   }, [state]);
 
+  // Impact sounds: Onça moving/biting, and heavy rent/fees.
+  const beastPos = state?.beast;
+  const firstBeast = useRef(true);
+  useEffect(() => { if (beastPos === undefined) return; if (firstBeast.current) { firstBeast.current = false; return; } sfx.roar(); }, [beastPos]);
+  const trId = state?.transfer?.id;
+  useEffect(() => {
+    const t = state?.transfer;
+    if (t && t.amount >= G.BIG_HIT && t.from !== G.BANK) setTimeout(() => sfx.alarm(), 400);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trId]);
+
   const evId = state?.event?.id;
   useEffect(() => {
     if (!state?.event) return;
@@ -355,6 +374,7 @@ function Master() {
             <p className="text-[5.8cqw] leading-tight">{G.boardFor(state)[pd.square]!.name}</p>
             <p className="text-[4.3cqw]">{pd.bidder ? `${nameOf(pd.bidder)} · ${G.money(pd.bid)}` : "Sem lances ainda"} · Tabela {G.money(G.boardFor(state)[pd.square]!.price!)}</p>
             <TitleInfo state={state} square={pd.square} big />
+            <button onClick={() => { if (window.confirm(pd.bidder ? `Encerrar o leilão agora? ${nameOf(pd.bidder)} leva por ${G.money(pd.bid)}.` : "Encerrar o leilão sem vencedor?")) hostAct("dismissAuction"); }} className="mt-1 rounded-lg border-2 border-border bg-card px-3 py-0.5 text-[2.6cqw]">⏹️ Dispensar leilão</button>
           </div>
         )}
         {state.offer && (
@@ -475,6 +495,14 @@ function Master() {
       <div className="portrait-lock absolute inset-0 z-50 hidden flex-col items-center justify-center gap-4 bg-background p-8 text-center font-display text-2xl">
         <span className="text-6xl" aria-hidden>📱↻</span>
         Vire a tela na horizontal (modo paisagem) para usar o tabuleiro
+      </div>
+      <div aria-live="polite" className="pointer-events-none fixed inset-0 z-50 overflow-hidden">
+        {reactions.map((r) => (
+          <div key={r.id} className="animate-float-up absolute bottom-[4%] flex flex-col items-center" style={{ left: `${r.x}%` }}>
+            <span className="text-[clamp(40px,7vmin,110px)] leading-none drop-shadow-lg">{r.emoji}</span>
+            <span className="rounded-full px-2 font-display text-[clamp(12px,1.8vmin,24px)] text-primary-foreground" style={{ backgroundColor: r.color }}>{r.name}</span>
+          </div>
+        ))}
       </div>
     </main>
   );

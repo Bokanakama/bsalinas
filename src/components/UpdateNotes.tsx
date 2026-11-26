@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 
-export const UPDATE_VERSION = "2026-11-financiamento";
+export const UPDATE_VERSION = "2026-11-reacoes";
 const NOTES = [
+  "🦆 6 bichinhos novos: Tucano, Arara Azul, Macaquinho, Boto, Bicho-Preguiça e Pato.",
+  "😂 Reações: toque num emoji e ele aparece flutuando na TV.",
+  "✨ Quem fecha todas as casas de uma cor ganha brilho dourado no tabuleiro.",
+  "🐆 Rugido da Onça e alarme quando alguém paga um aluguel pesado.",
   "🏛️ Financiamento no leilão: sem saldo? O Banco empresta até o valor do imóvel e você continua com dinheiro no bolso.",
   "💸 Pague o empréstimo quando sobrar Boró: B$ 50, B$ 100 ou quite tudo. Enquanto dever, não dá para construir.",
   "⏱️ Bônus de B$ 400 no Início: 2 minutos para 2 jogadores e +1 minuto por jogador a mais.",

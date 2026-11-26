@@ -29,6 +29,9 @@ export const sfx = {
   trainWhistle: () => { tone(740, 0.45, "triangle", 0, 0.07); tone(880, 0.45, "triangle", 0, 0.05); tone(740, 0.6, "triangle", 0.5, 0.07); tone(880, 0.6, "triangle", 0.5, 0.05); },
   coffeeCup: () => { tone(2093, 0.08, "sine", 0, 0.06); tone(2637, 0.12, "sine", 0.09, 0.05); },
   scratch: () => tone(120 + Math.random() * 180, 0.04, "sawtooth", 0, 0.025),
+  roar: () => { tone(90, 0.5, "sawtooth", 0, 0.12); tone(70, 0.7, "sawtooth", 0.1, 0.12); tone(140, 0.4, "square", 0.05, 0.05); },
+  alarm: () => { for (let i = 0; i < 4; i++) { tone(880, 0.18, "square", i * 0.36, 0.07); tone(660, 0.18, "square", i * 0.36 + 0.18, 0.07); } },
+  pop: () => tone(1200, 0.06, "sine", 0, 0.05),
   turn: () => { tone(784, 0.1, "triangle"); tone(1047, 0.15, "triangle", 0.1); },
 };
 

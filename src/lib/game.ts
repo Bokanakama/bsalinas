@@ -148,6 +148,12 @@ export const ANIMALS = [
   { id: "panda", name: "Panda", color: "#343a40" },
   { id: "cachorro", name: "Caramelo", color: "#f0a500" },
   { id: "capivara", name: "Capivara", color: "#ae3ec9" },
+  { id: "tucano", name: "Tucano", color: "#f76707" },
+  { id: "arara", name: "Arara Azul", color: "#1971c2" },
+  { id: "macaco", name: "Macaquinho", color: "#8d5524" },
+  { id: "boto", name: "Boto Cor-de-Rosa", color: "#e64980" },
+  { id: "preguica", name: "Bicho-Preguiça", color: "#a07850" },
+  { id: "pato", name: "Pato", color: "#fab005" },
 ] as const;
 export type AnimalId = (typeof ANIMALS)[number]["id"];
 export const BANK = "bank";
@@ -680,6 +686,17 @@ export function passBid(s: GameState, id: string, now: number = Date.now()): Gam
   if (!order.length) return finishAuction(s, pd);
   return nextBidder(say(s, `${nameOf(s, id)} passou`), { ...pd, order }, order, pd.turn % order.length, now);
 }
+/** Host: "Dispensar leilão" — closes it now; the highest bid so far (if any) wins. */
+export function dismissAuction(s: GameState): GameState {
+  const pd = s.pending;
+  if (pd?.kind !== "auction") return s;
+  return finishAuction(s, pd);
+}
+/** Emojis allowed in the TV reaction bar. */
+export const REACTIONS = ["😂", "😱", "🔥", "👏", "😭", "😡", "🤑", "🦀"] as const;
+export const isReaction = (e: unknown): e is (typeof REACTIONS)[number] => typeof e === "string" && (REACTIONS as readonly string[]).includes(e);
+/** Rent/fee big enough to sound the alarm on the TV. */
+export const BIG_HIT = 200;
 /** Clock tick: whoever's turn it is passes when their time runs out. */
 export function closeAuction(s: GameState, now: number = Date.now()): GameState {
   const pd = s.pending;

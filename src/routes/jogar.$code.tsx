@@ -355,6 +355,7 @@ function Wallet() {
       {trade && state.phase === "playing" && (
         <TradeTable state={state} pid={pid} initialTo={trade.to} initialGive={trade.give} onClose={() => setTrade(null)} onSend={(p) => { act("trade", p); setTrade(null); }} />
       )}
+      {state.phase === "playing" && !me.out && <ReactionBar onReact={(emoji) => { navigator.vibrate?.(15); act("react", { emoji }); }} />}
     </main>
   );
 }
@@ -439,5 +440,16 @@ function Neighborhoods({ state, pid, balance, act, onSell, onInspect, onTrade }:
         );
       })}
     </section>
+  );
+}
+
+function ReactionBar({ onReact }: { onReact: (e: string) => void }) {
+  const [cool, setCool] = useState(false);
+  return (
+    <div className="sticky bottom-2 z-30 flex justify-between gap-1 rounded-full border-4 border-border bg-card px-2 py-1 shadow-[4px_4px_0_var(--foreground)]" aria-label="Reações para a TV">
+      {G.REACTIONS.map((e) => (
+        <button key={e} type="button" disabled={cool} aria-label={`Reagir ${e}`} onClick={() => { onReact(e); setCool(true); setTimeout(() => setCool(false), 1500); }} className="text-2xl leading-none transition active:scale-125 disabled:opacity-40">{e}</button>
+      ))}
+    </div>
   );
 }

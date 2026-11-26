@@ -260,3 +260,24 @@ describe("mesa de negociação multi-imóveis", () => {
     expect(G.proposeTrade(s0, "a", "b", [], [6], bal(s0, "a") + 1, 0, "o").offer ?? null).toBeNull();
   });
 });
+
+describe("auction dismiss and reactions", () => {
+  it("there are 12 animals to pick, including the duck", async () => {
+    const G = await import("@/lib/game");
+    expect(G.ANIMALS).toHaveLength(12);
+    expect(G.ANIMALS.some((a) => a.id === "pato")).toBe(true);
+  });
+  it("only listed emojis are valid reactions", async () => {
+    const G = await import("@/lib/game");
+    expect(G.isReaction("😂")).toBe(true);
+    expect(G.isReaction("💩")).toBe(false);
+  });
+  it("dismissing an auction with no bids leaves the square unowned and clears pending", async () => {
+    const G = await import("@/lib/game");
+    const s0 = { ...G.newState("salinas"), phase: "playing" as const } as G.GameState;
+    const s = { ...s0, players: [{ id: "a", name: "A", color: "#000", balance: 1000, pos: 1, animal: "pato" } as G.Player], pending: { kind: "auction" as const, square: 1, bid: 0, bidder: null, endsAt: 0, order: ["a"], turn: 0 } };
+    const n = G.dismissAuction(s);
+    expect(n.pending).toBeNull();
+    expect(n.owners[1]).toBeUndefined();
+  });
+});
