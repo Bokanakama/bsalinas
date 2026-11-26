@@ -66,6 +66,7 @@ function Master() {
       case "scratch": s = G.revealCard(s, a.player_id); break;
       case "bid": s = G.bid(s, a.player_id, Number(p.amount)); break;
       case "pass": s = G.passBid(s, a.player_id); break;
+      case "repayLoan": s = G.repayLoan(s, a.player_id, Number(p.amount)); break;
       case "mortgage": s = G.mortgage(s, a.player_id, Number((p as { square?: number }).square)); break;
       case "unmortgage": s = G.unmortgage(s, a.player_id, Number((p as { square?: number }).square)); break;
       case "trade": {
@@ -171,6 +172,8 @@ function Master() {
   }, [cityExpiresAt, commit]);
 
   // Leilão: tick the clock and close it when time is up (through the same action queue).
+  const auctionSq = state?.pending?.kind === "auction" ? state.pending.square : -1;
+  useEffect(() => { if (auctionSq >= 0 && voiceRef.current) voice.play("leilao"); }, [auctionSq]);
   const auctionEnds = state?.pending?.kind === "auction" ? state.pending.endsAt : 0;
   useEffect(() => {
     if (!auctionEnds) return;

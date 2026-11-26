@@ -15,6 +15,7 @@ import { ScratchCard } from "@/components/ScratchCard";
 import { Gazette, RelicTracker, MoneyRain, ScratchingBanner, TitleInfo } from "@/components/GameInfo";
 import { SelvaIntro, SelvaRulesButton } from "@/components/SelvaGuide";
 import { MiniMap } from "@/components/MiniMap";
+import { UpdateNotes } from "@/components/UpdateNotes";
 
 export const Route = createFileRoute("/jogar/$code")({
   head: ({ params }) => ({
@@ -163,6 +164,18 @@ function Wallet() {
         <Animal id={me.animal} className="absolute -bottom-2 right-1 h-28 w-auto" />
       </header>
 
+      <UpdateNotes />
+      {!!me.loan && !me.out && (
+        <Card>
+          <p className="text-xs font-bold uppercase text-muted-foreground">🏛️ Financiamento bancário</p>
+          <p className="font-display text-2xl">{G.money(me.loan)} a pagar</p>
+          <p className="mb-2 text-xs text-muted-foreground">Pague quando sobrar Boró. Enquanto dever, o Banco não libera obras.</p>
+          <div className="grid grid-cols-3 gap-2">
+            {[50, 100].map((v) => <button key={v} disabled={me.balance < Math.min(v, me.loan!)} onClick={() => act("repayLoan", { amount: v })} className={`${btn} bg-muted text-sm`}>Pagar {G.money(Math.min(v, me.loan!))}</button>)}
+            <button disabled={me.balance < me.loan} onClick={() => act("repayLoan", { amount: me.loan! })} className={`${btn} bg-secondary text-sm`}>Quitar</button>
+          </div>
+        </Card>
+      )}
       <Gazette state={state} className="text-sm" />
       <RelicTracker state={state} className="text-sm" />
       {pd?.kind === "scratch" && pd.playerId !== pid && <ScratchingBanner state={state} />}
@@ -217,9 +230,10 @@ function Wallet() {
               <>
                 <div className="grid grid-cols-3 gap-2">
                   {[G.AUCTION_STEP, 50, 100].map((inc) => (
-                    <button key={inc} disabled={pd.bid + inc > me.balance} onClick={() => act("bid", { amount: pd.bid + inc })} className={`${btn} bg-secondary text-base`}>+{inc}</button>
+                    <button key={inc} disabled={pd.bid + inc > G.bidPower(state, pid, pd.square)} onClick={() => act("bid", { amount: pd.bid + inc })} className={`${btn} bg-secondary text-base`}>+{inc}</button>
                   ))}
                 </div>
+                {(() => { const f = G.financeSplit(me.balance, pd.bid + G.AUCTION_STEP); return f.loan > 0 ? <p className="mt-2 text-xs text-muted-foreground">🏛️ Crédito do Banco: até {G.money(G.auctionCredit(state, pid, pd.square))}. Se ganhar acima do seu saldo, você paga metade do saldo e o resto vira financiamento.</p> : null; })()}
                 <button onClick={() => act("pass")} className={`${btn} mt-2 bg-muted text-base`}>Passar</button>
               </>
             ) : (
@@ -411,7 +425,7 @@ function Neighborhoods({ state, pid, balance, act, onSell, onInspect, onTrade }:
                           </button>
                         )}
                         {canBuild && (
-                          <button disabled={state.moving || balance < G.houseCost(g)} onClick={() => act("build", { square: i })} className={`${miniBtn} bg-secondary`}>
+                          <button disabled={state.moving || balance < G.houseCost(g) || !!state.players.find((x) => x.id === pid)?.loan} onClick={() => act("build", { square: i })} className={`${miniBtn} bg-secondary`}>
                             {h === G.MAX_HOUSES - 1 ? "🏠" : "⛺"} {G.money(G.houseCost(g))}
                           </button>
                         )}

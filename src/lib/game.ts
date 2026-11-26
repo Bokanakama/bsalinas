@@ -169,6 +169,8 @@ export interface Player {
   stats?: { rent: number; jail: number; luck: number; built: number };
   /** "Saia Livre da Delegacia" cards held. */
   freeJail?: number;
+  /** Financiamento bancário em aberto (pago quando e quanto o jogador quiser). */
+  loan?: number;
 }
 export interface Transfer { id: number; from: string; to: string; amount: number; reason: string }
 
@@ -234,6 +236,8 @@ export const money = (n: number) => `${CURRENCY} ${n.toLocaleString("pt-BR")}`;
 export const current = (s: GameState) => s.players[s.turn % Math.max(1, s.players.length)]!;
 export const isMortgaged = (s: GameState, i: number) => !!s.mortgaged?.[i];
 export const CITY_EVENT_MS = 120_000;
+/** Bônus do Início: 2 min para 2 jogadores, +1 min por jogador adicional. */
+export const cityEventMs = (s: GameState) => CITY_EVENT_MS + 60_000 * Math.max(0, s.players.filter((p) => !p.out).length - 2);
 export function activeCityEvent(s: GameState, now = Date.now()) {
   const ev = s.cityEvent;
   if (!ev) return null;
@@ -254,7 +258,29 @@ export function netWorth(s: GameState, id: string): number {
     if (o !== id) return t;
     const sq = boardFor(s)[+i]!;
     return t + (isMortgaged(s, +i) ? mortgageValue(+i, s) : sq.price ?? 0) + housesAt(s, +i) * houseCost(sq.group ?? 0);
-  }, p.balance);
+  }, p.balance) - (p.loan ?? 0);
+}
+
+/** Crédito do Banco no leilão: até o valor de tabela do imóvel, menos o que já deve. */
+export const auctionCredit = (s: GameState, id: string, square: number) =>
+  Math.max(0, (boardFor(s)[square]?.price ?? 0) - (s.players.find((p) => p.id === id)?.loan ?? 0));
+/** Poder de lance = saldo + crédito disponível. */
+export const bidPower = (s: GameState, id: string, square: number) =>
+  (s.players.find((p) => p.id === id)?.balance ?? 0) + auctionCredit(s, id, square);
+/** Lance acima do saldo: paga metade do saldo e financia o resto, para não zerar a carteira. */
+export function financeSplit(balance: number, amount: number) {
+  if (amount <= balance) return { cash: amount, loan: 0 };
+  const cash = Math.floor(Math.max(0, balance) / 2);
+  return { cash, loan: amount - cash };
+}
+/** Amortização voluntária: o jogador escolhe quanto pagar do financiamento. */
+export function repayLoan(s: GameState, id: string, amount: number): GameState {
+  const p = s.players.find((x) => x.id === id);
+  if (!p || p.out || !p.loan) return s;
+  const a = Math.min(Math.floor(amount), p.loan, p.balance);
+  if (!(a > 0)) return s;
+  const next = move(patch(s, id, { loan: p.loan - a }), id, BANK, a, "Financiamento");
+  return say(next, p.loan - a ? `${p.name} amortizou ${money(a)} do financiamento` : `${p.name} quitou o financiamento!`, "good");
 }
 
 function say(s: GameState, text: string, tone: "good" | "bad" | "info" = "info"): GameState {
@@ -511,6 +537,7 @@ export function build(s: GameState, id: string, square: number): GameState {
   const sq = boardFor(s)[square];
   const p = s.players.find((x) => x.id === id);
   if (!sq || !p || p.out || s.phase !== "playing" || s.moving || sq.kind !== "property" || (sq.group ?? 9) > 7) return s;
+  if (p.loan) return s; // o Banco exige quitar o financiamento antes de liberar obras
   if (s.owners[square] !== id || !ownsGroup(s, id, sq.group!)) return s;
   if (boardFor(s).some((b, i) => b.group === sq.group && isMortgaged(s, i))) return s;
   const h = housesAt(s, square);
@@ -606,7 +633,7 @@ function startAuction(s: GameState, square: number, now: number, by: string): Ga
   if (((s.players.find((p) => p.id === by)?.laps) ?? 0) < 1) return endTurn(say(s, `${boardFor(s)[square]!.name} continua à venda (leilão só depois da 1ª volta)`));
   const n = s.players.length;
   const start = s.players.findIndex((p) => p.id === by);
-  const order = Array.from({ length: n }, (_, k) => s.players[(start + k) % n]!).filter((p) => !p.out && p.balance >= AUCTION_STEP).map((p) => p.id);
+  const order = Array.from({ length: n }, (_, k) => s.players[(start + k) % n]!).filter((p) => !p.out && bidPower(s, p.id, square) >= AUCTION_STEP).map((p) => p.id);
   if (!order.length) return endTurn(s);
   return say({ ...s, pending: { kind: "auction", square, bid: 0, bidder: null, endsAt: now + AUCTION_MS, order, turn: 0 } }, `Leilão: ${boardFor(s)[square]!.name}! Vez de ${nameOf(s, order[0]!)}`, "info");
 }
@@ -614,7 +641,7 @@ export const auctionTurn = (s: GameState) => (s.pending?.kind === "auction" ? s.
 
 /** Move on to the next bidder who can still raise; finish when nobody else can. */
 function nextBidder(s: GameState, pd: Extract<Pending, { kind: "auction" }>, order: string[], from: number, now: number): GameState {
-  const can = (id: string) => id !== pd.bidder && (s.players.find((p) => p.id === id)?.balance ?? 0) >= pd.bid + AUCTION_STEP;
+  const can = (id: string) => id !== pd.bidder && bidPower(s, id, pd.square) >= pd.bid + AUCTION_STEP;
   const left = order.filter((id) => id === pd.bidder || can(id));
   const others = left.filter((id) => id !== pd.bidder);
   if (!others.length) return finishAuction(s, pd);
@@ -629,15 +656,19 @@ function finishAuction(s: GameState, pd: Extract<Pending, { kind: "auction" }>):
   const sq = boardFor(s)[pd.square]!;
   const next: GameState = { ...s, pending: null };
   if (!pd.bidder) return endTurn(say(next, `Ninguém deu lance em ${sq.name}`));
-  const won = move({ ...next, owners: { ...s.owners, [pd.square]: pd.bidder } }, pd.bidder, BANK, pd.bid, `Leilão ${sq.name}`);
-  return endTurn(say(won, `${nameOf(s, pd.bidder)} arrematou ${sq.name} por ${money(pd.bid)}`, "good"));
+  const w = s.players.find((p) => p.id === pd.bidder)!;
+  const { cash, loan } = financeSplit(w.balance, pd.bid);
+  let won = { ...next, owners: { ...s.owners, [pd.square]: pd.bidder } };
+  if (loan) won = patch(won, w.id, { loan: (w.loan ?? 0) + loan });
+  if (cash) won = move(won, pd.bidder, BANK, cash, `Leilão ${sq.name}`);
+  return endTurn(say(won, `${nameOf(s, pd.bidder)} arrematou ${sq.name} por ${money(pd.bid)}${loan ? ` (${money(loan)} financiado)` : ""}`, "good"));
 }
 export function bid(s: GameState, id: string, amount: number, now: number = Date.now()): GameState {
   const pd = s.pending;
   const p = s.players.find((x) => x.id === id);
   if (pd?.kind !== "auction" || !p || p.out || pd.order[pd.turn] !== id) return s;
   const a = Math.floor(amount);
-  if (a < pd.bid + AUCTION_STEP || a > p.balance) return s;
+  if (a < pd.bid + AUCTION_STEP || a > bidPower(s, id, pd.square)) return s;
   const np = { ...pd, bid: a, bidder: id };
   return nextBidder(say(s, `${p.name} deu lance de ${money(a)}`), np, pd.order, pd.turn + 1, now);
 }
@@ -753,8 +784,8 @@ function endTurn(s: GameState): GameState {
     let ev = activeCityEvent({ ...next, round });
     if (round % EVENT_EVERY === 0 && !ev) {
       const e = eventsFor(s)[(round / EVENT_EVERY - 1) % eventsFor(s).length]!;
-      ev = e.kind === "padroeira" ? { ...e, expiresAt: Date.now() + CITY_EVENT_MS } : { ...e, until: round + 1 };
-      next = say({ ...next, round, cityEvent: ev }, e.text, "info");
+      ev = e.kind === "padroeira" ? { ...e, text: e.text.replace(/\d+ minutos/, `${cityEventMs(next) / 60_000} minutos`), expiresAt: Date.now() + cityEventMs(next) } : { ...e, until: round + 1 };
+      next = say({ ...next, round, cityEvent: ev }, ev.text, "info");
     } else next = { ...next, round, cityEvent: ev };
   }
   next = patch({ ...next, turn }, next.players[turn]!.id, { doubles: 0 });
