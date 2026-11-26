@@ -164,7 +164,7 @@ function Wallet() {
         <Animal id={me.animal} className="absolute -bottom-2 right-1 h-28 w-auto" />
       </header>
 
-      <UpdateNotes />
+      <UpdateNotes city={G.cityOf(state)} />
       {!!me.loan && !me.out && (
         <Card>
           <p className="text-xs font-bold uppercase text-muted-foreground">🏛️ Financiamento bancário</p>
