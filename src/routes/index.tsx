@@ -79,6 +79,7 @@ function Home() {
           </Link>
         </section>
         <footer className="mt-8 flex items-center justify-center gap-2 text-center text-sm text-muted-foreground"><Waves className="size-4 text-primary" aria-hidden="true" />Mais cidades chegando em breve!</footer>
+        <p className="mt-3 text-center text-xs text-muted-foreground">Desenvolvido por <a href="https://instagram.com/adrianodofuscaa" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary underline-offset-4 hover:underline">@adrianodofuscaa</a></p>
       </div>
     </main>
   );
