@@ -4,7 +4,8 @@ import { ALTARS, FOG_MS, CRISIS_MS, SHIFT_MIN_MS, SHIFT_MAX_MS, GHOST_MIN_MS, GH
 import { notesFor } from "@/components/UpdateNotes";
 
 const playing = (city: G.CityId = "esquecidos") => G.start(G.join(G.join(G.newState(city), "a", "Ana", "gato"), "b", "Bia", "coelho"));
-const awake = () => G.horrorTick({ ...playing(), round: 8 }, 1000, 0);
+// Existing saved crises keep their sequential altar rule.
+const awake = () => { const s = G.horrorTick({ ...playing(), round: 8 }, 1000, 0); return s.curse ? { ...s, curse: { ...s.curse, freeAltars: false } } : s; };
 const bal = (s: G.GameState, id: string) => s.players.find((p) => p.id === id)?.balance;
 
 describe("Cidade dos Esquecidos", () => {

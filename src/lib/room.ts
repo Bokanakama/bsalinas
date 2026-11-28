@@ -25,7 +25,8 @@ export function setPlayerId(id: string) {
 
 // Credentials are issued by the server and scoped to one room and role.
 const channels = new Map<string, string>();
-export type RoomSnapshot = { channel: string; state: GameState; updated_at: string };
+export type ShadowPact = { playerId: string; accepted: boolean; answered: boolean };
+export type RoomSnapshot = { channel: string; state: GameState; updated_at: string; privatePact?: ShadowPact | null };
 const pendingAccess = new Map<string, Promise<RoomSnapshot | null>>();
 export async function openRoom(code: string, master = false): Promise<RoomSnapshot | null> {
   const key = `boro-access-${code}-${master ? "master" : "player"}`;
@@ -58,7 +59,7 @@ export async function createRoom(code: string, city: CityId = "salinas") {
   localStorage.setItem(`boro-access-${code}-master`, response.token);
   if (city !== "salinas") await accessRoom(code, "write", { state: newState(city) }, true);
 }
-export async function accessRoom(code: string, op: "read" | "write" | "actions" | "send" | "prune", payload: Record<string, unknown> = {}, master = false) {
+export async function accessRoom(code: string, op: "read" | "write" | "actions" | "send" | "prune" | "pact" | "pactOpen" | "pactAnswer" | "pactClose", payload: Record<string, unknown> = {}, master = false) {
   const token = localStorage.getItem(`boro-access-${code}-${master ? "master" : "player"}`);
   if (!token) throw new Error("Acesso à sala não autorizado.");
   return (await roomRequest({ data: { op, code, token, payload } })).result;

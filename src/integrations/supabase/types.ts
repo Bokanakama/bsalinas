@@ -67,22 +67,51 @@ export type Database = {
           },
         ]
       }
+      room_player_seats: {
+        Row: {
+          player_id: string
+          room_code: string
+          token_hash: string
+        }
+        Insert: {
+          player_id: string
+          room_code: string
+          token_hash: string
+        }
+        Update: {
+          player_id?: string
+          room_code?: string
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_player_seats_room_code_fkey"
+            columns: ["room_code"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
       rooms: {
         Row: {
           channel_id: string | null
           code: string
+          shadow_pact: Json | null
           state: Json
           updated_at: string
         }
         Insert: {
           channel_id?: string | null
           code: string
+          shadow_pact?: Json | null
           state?: Json
           updated_at?: string
         }
         Update: {
           channel_id?: string | null
           code?: string
+          shadow_pact?: Json | null
           state?: Json
           updated_at?: string
         }

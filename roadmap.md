@@ -72,3 +72,11 @@
 - [x] Animar o fantasma no perímetro e iluminar altares purificados sem mudar a geometria.
 - [x] Adicionar batimento háptico, baixa sanidade e sussurros opcionais com redução de efeitos.
 - [x] Verificar regras e fluxo compartilhado em TV e quatro celulares (134 testes; crise preparada pelo criador, resgate 0→30 e quatro selos pela UI; áudio reproduzido; chamada de vibração verificada, sensação física não verificável; preferências e tela de 320px).
+
+## Esquecidos: cooperação e tensão restantes (prompt-30)
+- [x] Altares livres nas novas crises, preservando sequência das crises antigas.
+- [x] Vaquinha de dez segundos com contribuições de B$20/B$50, restituição e prêmio para quem ajuda.
+- [x] Sintonia de três segundos com alternativa sem timing e sem punição por erro.
+- [x] Ecos privados, impacto do fantasma na TV e peões perdidos nas sombras.
+- [x] Verificar regras, TV e quatro celulares (146 testes; vaquinha 120+50+30, sintonia errada/certa, quatro selos, bônus, ecos e ataque; prazo final com restituição e pacto, sem pagamento duplicado).
+- [x] Pacto secreto opcional por sala: oferta e escolha privadas, mestre resolve benefícios sem expor papéis aos participantes; acesso cruzado e identidade alegada negados em sala de teste.

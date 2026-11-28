@@ -6,7 +6,7 @@ import { horrorFeedback } from "@/lib/horror-feedback";
 import type { GameState } from "@/lib/game";
 import whisper from "@/assets/esquecidos-sussurro.asset.json";
 
-const defaults = { vibration: false, whispers: false, visuals: true };
+const defaults = { vibration: false, whispers: false, visuals: true, echoes: false };
 
 /** Local sensory preferences never travel through room state or action queues. */
 export function HorrorSenses({ state, playerId }: { state: GameState; playerId: string }) {
@@ -16,6 +16,7 @@ export function HorrorSenses({ state, playerId }: { state: GameState; playerId: 
   const [visible, setVisible] = useState(false);
   const [supported, setSupported] = useState(false);
   const [audioBlocked, setAudioBlocked] = useState(false);
+  const [echo, setEcho] = useState<string | null>(null);
   const audio = useRef<HTMLAudioElement | null>(null);
   const { active, lowSanity, lost, heartbeatMs } = horrorFeedback(state, playerId);
 
@@ -24,7 +25,7 @@ export function HorrorSenses({ state, playerId }: { state: GameState; playerId: 
       const saved: unknown = JSON.parse(localStorage.getItem("esquecidos-senses") ?? "null");
       if (saved && typeof saved === "object") {
         const p = saved as Record<string, unknown>;
-        setSettings({ vibration: p["vibration"] === true, whispers: p["whispers"] === true, visuals: p["visuals"] !== false });
+        setSettings({ vibration: p["vibration"] === true, whispers: p["whispers"] === true, visuals: p["visuals"] !== false, echoes: p["echoes"] === true });
       }
     } catch { /* Optional storage must not prevent gameplay. */ }
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -82,11 +83,24 @@ export function HorrorSenses({ state, playerId }: { state: GameState; playerId: 
 
   useEffect(() => () => { if (audio.current) { audio.current.pause(); audio.current.removeAttribute("src"); audio.current.load(); audio.current = null; } }, []);
 
+  useEffect(() => {
+    if (!active || !visible || !lowSanity || lost || !settings.echoes || open) { setEcho(null); return; }
+    let clear: ReturnType<typeof setTimeout> | undefined;
+    const show = () => {
+      const messages = ["Há alguém atrás de você. Não olhe ainda.", "Seu nome sumiu do livro. Você ainda lembra dele?", "A sombra do seu peão se moveu sozinha.", "O relógio chamou você pelo nome."];
+      setEcho(messages[Math.floor(Math.random() * messages.length)] ?? messages[0] ?? null);
+      clear = setTimeout(() => setEcho(null), 6000);
+    };
+    const first = setTimeout(show, 10000), timer = setInterval(show, 30000);
+    return () => { clearTimeout(first); clearInterval(timer); if (clear) clearTimeout(clear); };
+  }, [active, visible, lowSanity, lost, settings.echoes, open]);
+
   return <>
     <Button variant="outline" size="icon" aria-label="Efeitos de terror" title="Efeitos de terror" onClick={() => setOpen(true)}><Settings2 /></Button>
     {active && lowSanity && settings.visuals && !reduced && visible && !open && <div aria-hidden="true" className="sanity-static" />}
+    {echo && active && lowSanity && <aside role="status" aria-label="Eco da cidade" className="private-echo fixed inset-x-4 top-4 z-40 mx-auto max-w-sm rounded-lg border border-accent bg-background p-4 shadow-[var(--shadow-soft)]"><p className="text-xs font-bold uppercase text-accent">Eco da cidade · uma alucinação</p><p className="mt-2 text-sm">{echo}</p><Button variant="ghost" size="icon" className="absolute right-1 top-1" aria-label="Dispensar eco" onClick={() => setEcho(null)}><X /></Button></aside>}
     {open && <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 p-4"><section role="dialog" aria-modal="true" aria-label="Efeitos de terror" className="w-full max-w-sm rounded-lg border border-border bg-card p-5"><div className="mb-5 flex items-center justify-between"><h2 className="font-display text-xl">Efeitos de terror</h2><Button autoFocus variant="ghost" size="icon" aria-label="Fechar efeitos" onClick={() => setOpen(false)}><X /></Button></div><div className="space-y-5">{([
-      ["vibration", "Batimento no celular"], ["whispers", "Sussurros"], ["visuals", "Bordas de baixa sanidade"],
+      ["vibration", "Batimento no celular"], ["whispers", "Sussurros"], ["visuals", "Bordas de baixa sanidade"], ["echoes", "Ecos da cidade"],
     ] as const).map(([key, label]) => <label key={key} className="flex items-center justify-between gap-3 text-sm"><span>{label}</span><Switch aria-label={label} checked={settings[key]} disabled={key === "vibration" && (!supported || reduced)} onCheckedChange={(checked) => change(key, checked)} /></label>)}</div>{!supported && <p className="mt-4 text-xs text-muted-foreground">Este navegador não oferece vibração.</p>}{reduced && <p className="mt-4 text-xs text-muted-foreground">Movimento reduzido: bordas animadas e batimento desativados.</p>}{audioBlocked && <p role="status" className="mt-4 text-xs text-destructive">O navegador bloqueou o som. Desative e ative os sussurros para tentar novamente.</p>}<Button variant="secondary" className="mt-5 w-full" onClick={() => setOpen(false)}>Voltar à partida</Button></section></div>}
   </>;
 }

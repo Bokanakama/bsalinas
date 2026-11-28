@@ -1,4 +1,4 @@
-import { ALTARS, CRISIS_MS, GHOST_MIN_MS, GHOST_MAX_MS, GHOST_TRIBUTE, SHIFT_MIN_MS, SHIFT_MAX_MS, SEAL_REWARD, PENALTY_PER_SEAL, CURSE_MESSAGE, CURSE_ROUND, ESQUECIDOS_BOARD, ESQUECIDOS_CARDS, ESQUECIDOS_EVENTS, FOG_MS, RITUAL_COST, type Curse } from "./esquecidos";
+import { ALTARS, ALTAR_HELP_MS, CRISIS_MS, GHOST_MIN_MS, GHOST_MAX_MS, GHOST_TRIBUTE, SHIFT_MIN_MS, SHIFT_MAX_MS, SEAL_REWARD, PENALTY_PER_SEAL, CURSE_MESSAGE, CURSE_ROUND, ESQUECIDOS_BOARD, ESQUECIDOS_CARDS, ESQUECIDOS_EVENTS, FOG_MS, RITUAL_COST, type Curse } from "./esquecidos";
 import { BORO_BOARD, BORO_CARDS, BORO_EVENTS } from "./boro";
 import { BEAST_BITE, BEAST_START, RELIC_NAMES, RELIC_SQUARES, RELIC_STEAL, SELVA_BOARD, SELVA_CARDS, SELVA_EVENTS } from "./selva";
 // Pure game rules for Banco Imobiliário Salinas. The master device is the only writer of GameState.
@@ -234,6 +234,7 @@ export interface GameState {
   relics?: Record<string, string>;
   /** Esquecidos only: shared cooperative crisis, no private roles in public state. */
   curse?: Curse;
+  horrorOptions?: { pact: boolean };
 }
 
 export const newState = (city: CityId = "salinas"): GameState => ({
@@ -922,7 +923,26 @@ export function kickPlayer(s: GameState, id: string): GameState {
 
 /** The curse is deliberately scoped: legacy rooms and other cities never enter it. */
 export const horrorActive = (s: GameState) => cityOf(s) === "esquecidos" && s.curse?.stage === "awake" && s.phase === "playing";
-export const ritualTarget = (s: GameState) => s.curse?.order[Object.keys(s.curse.altars).length];
+export const availableAltars = (s: GameState): number[] => {
+  const c = s.curse;
+  if (!c) return [];
+  if (c.freeAltars) return ALTARS.filter((a) => !c.altars[a]);
+  const target = c.order[Object.keys(c.altars).length];
+  return target === undefined ? [] : [target];
+};
+export function ritualTarget(s: GameState, playerId?: string) {
+  const available = availableAltars(s);
+  const p = s.players.find((p) => p.id === playerId);
+  if (!p) return available[0];
+  return [...available].sort((a, b) => {
+    const da = Math.abs(p.pos - a), db = Math.abs(p.pos - b);
+    return Math.min(da, 56 - da) - Math.min(db, 56 - db);
+  })[0];
+}
+export function configureHorror(s: GameState, pact: boolean): GameState {
+  if (cityOf(s) !== "esquecidos" || s.phase !== "lobby") return s;
+  return { ...s, horrorOptions: { pact } };
+}
 export function altarNear(s: GameState, id: string, altar: number): boolean {
   const p = s.players.find((x) => x.id === id);
   if (!p || !(ALTARS as readonly number[]).includes(altar)) return false;
@@ -968,15 +988,17 @@ export function shiftProperties(s: GameState, random: number): GameState {
 
 /** Master-only tick: every randomized deadline and result is saved once for every device. */
 export function horrorTick(s: GameState, now: number, random = 0): GameState {
-  if (cityOf(s) !== "esquecidos" || s.phase !== "playing" || s.moving) return s;
+  if (cityOf(s) !== "esquecidos" || s.phase !== "playing") return s;
   if (horrorActive(s) && s.curse && now >= (s.curse.deadline ?? s.curse.awakenedAt + CRISIS_MS)) return horrorFinish(s, false, now);
+  s = expireAltarAppeal(s, now);
+  if (s.moving) return s;
   if (s.pending) return s;
   if (!s.curse) {
     const properties = boardFor(s).filter((sq) => sq.kind === "property").length;
     if ((s.round ?? 0) < CURSE_ROUND && Object.keys(s.owners).length < Math.ceil(properties / 2)) return s;
     const rotate = Math.min(3, Math.max(0, Math.floor(random * 4)));
     const order = [...ALTARS.slice(rotate), ...ALTARS.slice(0, rotate)];
-    const curse: Curse = { version: 2, stage: "awake", awakenedAt: now, deadline: now + CRISIS_MS, nextFogAt: now + FOG_MS, nextShiftAt: now + intervalFrom(random, SHIFT_MIN_MS, SHIFT_MAX_MS), nextGhostAt: now + intervalFrom(random, GHOST_MIN_MS, GHOST_MAX_MS), ghost: 28, shiftLaps: Object.fromEntries(s.players.filter((p) => !p.out).map((p) => [p.id, p.laps ?? 0])), fogGroups: [], consumed: [], altars: {}, sanity: Object.fromEntries(s.players.filter((p) => !p.out).map((p) => [p.id, 100])), torches: Object.fromEntries(s.players.filter((p) => !p.out).map((p) => [p.id, 2])), clue: 0, order };
+    const curse: Curse = { version: 2, freeAltars: true, helpers: [], stage: "awake", awakenedAt: now, deadline: now + CRISIS_MS, nextFogAt: now + FOG_MS, nextShiftAt: now + intervalFrom(random, SHIFT_MIN_MS, SHIFT_MAX_MS), nextGhostAt: now + intervalFrom(random, GHOST_MIN_MS, GHOST_MAX_MS), ghost: 28, shiftLaps: Object.fromEntries(s.players.filter((p) => !p.out).map((p) => [p.id, p.laps ?? 0])), fogGroups: [], consumed: [], altars: {}, sanity: Object.fromEntries(s.players.filter((p) => !p.out).map((p) => [p.id, 100])), torches: Object.fromEntries(s.players.filter((p) => !p.out).map((p) => [p.id, 2])), clue: 0, order };
     return say({ ...s, curse, cityEvent: null, offer: null, card: null, transfer: null, players: s.players.map((p) => ({ ...p, jail: 0, doubles: 0 })) }, CURSE_MESSAGE, "bad");
   }
   if (!horrorActive(s)) return shiftProperties(s, random);
@@ -1000,13 +1022,15 @@ export function horrorTick(s: GameState, now: number, random = 0): GameState {
     const from = c.ghost ?? 28;
     const crossed = Array.from({ length: steps }, (_, i) => (from + i + 1) % boardFor(s).length);
     const sanity = { ...c.sanity };
+    const victims: string[] = [];
     for (const p of next.players.filter((p) => !p.out && crossed.includes(p.pos))) {
+      victims.push(p.id);
       const tribute = Math.min(GHOST_TRIBUTE, Math.max(0, p.balance));
       next = move(next, p.id, BANK, tribute, "Tributo do fantasma");
       sanity[p.id] = Math.max(0, (sanity[p.id] ?? 100) - 10);
       next = say(next, `👻 O fantasma atravessou ${p.name}: −${money(tribute)} e −10 de sanidade.`, "bad");
     }
-    c = { ...c, sanity, ghost: (from + steps) % boardFor(s).length, nextGhostAt: now + intervalFrom(random, GHOST_MIN_MS, GHOST_MAX_MS) };
+    c = { ...c, sanity, ...(victims.length ? { lastGhostHit: { id: now, players: victims } } : {}), ghost: (from + steps) % boardFor(s).length, nextGhostAt: now + intervalFrom(random, GHOST_MIN_MS, GHOST_MAX_MS) };
     next = { ...next, curse: c };
   }
   if (!next.players.some((p) => !p.out && (c.sanity[p.id] ?? 0) > 0)) return horrorFinish(next, false, now);
@@ -1015,13 +1039,14 @@ export function horrorTick(s: GameState, now: number, random = 0): GameState {
   return next;
 }
 function horrorFinish(s: GameState, contained: boolean, now = Date.now()): GameState {
+  s = refundAltarAppeal(s);
   const c = s.curse;
   if (!c || c.stage !== "awake") return s;
   const missing = 4 - Object.keys(c.altars).length;
   const penaltyRate = contained ? 0 : missing * PENALTY_PER_SEAL / 100;
-  const helpers = new Set(Object.values(c.altars));
+  const helpers = new Set([...Object.values(c.altars), ...(c.helpers ?? [])]);
   const players = s.players.map((p) => p.out ? p : { ...p, balance: contained ? p.balance + (helpers.has(p.id) ? SEAL_REWARD : 0) : p.balance - Math.floor(Math.max(0, p.balance) * missing * PENALTY_PER_SEAL / 100), jail: 0, doubles: 0 });
-  return say({ ...s, players, phase: "playing", winner: null, pending: null, moving: false, offer: null, curse: { ...c, version: 2, stage: contained ? "escaped" : "forgotten", resolvedAt: now, penaltyRate, consumed: contained ? [] : c.consumed } }, contained ? "Quatro selos quebrados! Banco reaberto, névoa dissipada. Cada participante do ritual recebe B$ 250, uma vez. A partida continua!" : `Banco reaberto em emergência. ${missing} selo(s) faltando: todos perdem ${Math.round(penaltyRate * 100)}% do saldo; imóveis cobertos ficam sem aluguel. A partida continua!`, contained ? "good" : "bad");
+  return say({ ...s, players, phase: "playing", winner: null, pending: null, moving: false, offer: null, curse: { ...c, version: 2, stage: contained ? "escaped" : "forgotten", resolvedAt: now, penaltyRate, ...(s.horrorOptions?.pact && !contained ? { penaltyBalances: Object.fromEntries(s.players.map((p) => [p.id, p.balance])) } : {}), consumed: contained ? [] : c.consumed } }, contained ? "Quatro selos quebrados! Banco reaberto, névoa dissipada. Cada participante do ritual recebe B$ 250, uma vez. A partida continua!" : `Banco reaberto em emergência. ${missing} selo(s) faltando: todos perdem ${Math.round(penaltyRate * 100)}% do saldo; imóveis cobertos ficam sem aluguel. A partida continua!`, contained ? "good" : "bad");
 }
 export function repelGhost(s: GameState, id: string): GameState {
   const c = s.curse, p = s.players.find((p) => p.id === id);
@@ -1060,7 +1085,10 @@ function horrorLand(s: GameState, random: number): GameState {
 /** Ritual and torch actions are voluntary and do not consume the dice turn. */
 export function purifyAltar(s: GameState, id: string, altar: number, sacrifice?: number): GameState {
   const p = s.players.find((x) => x.id === id), c = s.curse;
-  if (!horrorActive(s) || s.moving || s.pending || !p || p.out || !c || (c.sanity[id] ?? 0) <= 0 || ritualTarget(s) !== altar || c.lastSealRollId === s.rollId || !altarNear(s, id, altar)) return s;
+  if (!horrorActive(s) || s.moving || s.pending || !p || p.out || !c || (c.sanity[id] ?? 0) <= 0 || !availableAltars(s).includes(altar) || c.lastSealRollId === s.rollId || !altarNear(s, id, altar)) return s;
+  // A funded appeal belongs to its requester, never to a competing offer.
+  if (c.appeal?.altar === altar && c.appeal.playerId !== id) return s;
+  if (c.appeal?.playerId === id) return s;
   let next = s;
   if (sacrifice !== undefined) {
     if (!Number.isInteger(sacrifice) || s.owners[sacrifice] !== id) return s;
@@ -1080,8 +1108,75 @@ export function useTorch(s: GameState, id: string, target = id): GameState {
   if (!horrorActive(s) || s.moving || s.pending || !c || !p || p.out || !other || other.out || (c.sanity[id] ?? 0) <= 0 || (c.torches[id] ?? 0) < 1 || (c.sanity[target] ?? 0) >= 100) return s;
   return say({ ...s, curse: { ...c, torches: { ...c.torches, [id]: (c.torches[id] ?? 0) - 1 }, sanity: { ...c.sanity, [target]: Math.min(100, (c.sanity[target] ?? 0) + 30) } } }, `${p.name} iluminou o caminho de ${other.name}: +30 de sanidade.`, "good");
 }
-export function travelAltar(s: GameState, id: string): GameState {
-  const c = s.curse, altar = ritualTarget(s);
+export function travelAltar(s: GameState, id: string, selected?: number): GameState {
+  const c = s.curse, altar = selected ?? ritualTarget(s, id);
   if (!horrorActive(s) || s.moving || s.pending || !c || altar === undefined || current(s)?.id !== id || (c.sanity[id] ?? 0) <= 0 || (c.torches[id] ?? 0) < 1) return s;
+  if (!availableAltars(s).includes(altar)) return s;
   return say({ ...patch(s, id, { pos: altar }), curse: { ...c, torches: { ...c.torches, [id]: (c.torches[id] ?? 0) - 1 } } }, `${nameOf(s, id)} gastou uma tocha e atravessou as sombras até ${boardFor(s)[altar]?.name}.`, "info");
+}
+
+function refundAltarAppeal(s: GameState): GameState {
+  const c = s.curse, appeal = c?.appeal;
+  if (!c || !appeal) return s;
+  return { ...s, players: s.players.map((p) => ({ ...p, balance: p.balance + (appeal.contributions[p.id] ?? 0) })), curse: { ...c, appeal: null } };
+}
+export function expireAltarAppeal(s: GameState, now: number): GameState {
+  if (cityOf(s) !== "esquecidos") return s;
+  const a = s.curse?.appeal;
+  if (!a) return s;
+  const owner = s.players.find((p) => p.id === a.playerId);
+  if (now < a.endsAt && horrorActive(s) && owner && !owner.out && (s.curse?.sanity[a.playerId] ?? 0) > 0 && availableAltars(s).includes(a.altar)) return s;
+  return say(refundAltarAppeal(s), "Vaquinha encerrada. Os Borós reservados voltaram aos participantes.", "info");
+}
+export function requestAltarHelp(s: GameState, id: string, altar: number, now: number): GameState {
+  const c = s.curse, p = s.players.find((p) => p.id === id);
+  if (!horrorActive(s) || !c || !p || p.out || s.moving || s.pending || c.appeal || c.lastSealRollId === s.rollId || (c.sanity[id] ?? 0) <= 0 || p.balance < 0 || p.balance >= RITUAL_COST || !availableAltars(s).includes(altar) || !altarNear(s, id, altar)) return s;
+  const reserve = Math.min(RITUAL_COST, p.balance);
+  return say({ ...patch(s, id, { balance: p.balance - reserve }), curse: { ...c, appeal: { id: now, playerId: id, altar, endsAt: now + ALTAR_HELP_MS, contributions: { [id]: reserve } } } }, `${p.name} pediu ajuda para ${boardFor(s)[altar]?.name}: faltam ${money(RITUAL_COST - reserve)}.`, "info");
+}
+export function donateAltar(s: GameState, id: string, appealId: number, amount: number, now: number): GameState {
+  if (!horrorActive(s)) return s;
+  const checked = expireAltarAppeal(s, now);
+  if (checked !== s) return checked;
+  const c = s.curse, a = c?.appeal, p = s.players.find((p) => p.id === id);
+  if (!horrorActive(s) || !c || !a || !p || p.out || id === a.playerId || a.id !== appealId || ![20, 50].includes(amount)) return s;
+  const total = Object.values(a.contributions).reduce((sum, v) => sum + v, 0);
+  const debit = Math.min(amount, RITUAL_COST - total);
+  if (debit <= 0 || p.balance < debit) return s;
+  return say({ ...patch(s, id, { balance: p.balance - debit }), curse: { ...c, appeal: { ...a, contributions: { ...a.contributions, [id]: (a.contributions[id] ?? 0) + debit } } } }, `${p.name} reservou ${money(debit)} para o selo.`, "good");
+}
+export function finishAltarHelp(s: GameState, id: string, appealId: number, now: number): GameState {
+  if (!horrorActive(s)) return s;
+  const checked = expireAltarAppeal(s, now);
+  if (checked !== s) return checked;
+  const c = s.curse, a = c?.appeal;
+  if (!horrorActive(s) || !c || !a || a.playerId !== id || a.id !== appealId || s.moving || s.pending || c.lastSealRollId === s.rollId || !altarNear(s, id, a.altar) || Object.values(a.contributions).reduce((v, n) => v + n, 0) !== RITUAL_COST) return s;
+  const altars = { ...c.altars, [a.altar]: id };
+  const helpers = [...new Set([...(c.helpers ?? []), ...Object.keys(a.contributions).filter((p) => (a.contributions[p] ?? 0) > 0)])];
+  const next = say({ ...s, curse: { ...c, appeal: null, helpers, altars, lastSealRollId: s.rollId, sanity: { ...c.sanity, [id]: Math.min(100, (c.sanity[id] ?? 0) + 20) } } }, `Vaquinha concluída! ${boardFor(s)[a.altar]?.name} foi purificado pelo grupo.`, "good");
+  return Object.keys(altars).length === 4 ? horrorFinish(next, true, now) : next;
+}
+export function cancelAltarHelp(s: GameState, id: string, appealId: number): GameState {
+  if (!horrorActive(s)) return s;
+  const a = s.curse?.appeal;
+  if (!a || a.playerId !== id || a.id !== appealId) return s;
+  return say(refundAltarAppeal(s), "Vaquinha cancelada. Borós devolvidos.", "info");
+}
+
+/** Called only by the master with its private gateway response, after crisis resolution. */
+export function settleShadowPact(s: GameState, pact: { playerId: string; accepted: boolean } | null): GameState {
+  const c = s.curse;
+  if (cityOf(s) !== "esquecidos" || !s.horrorOptions?.pact || !c || c.stage === "awake" || c.pactResolved || !pact?.accepted) return s;
+  const p = s.players.find((p) => p.id === pact.playerId);
+  if (!p || p.out) return s;
+  const failedByTime = c.stage === "forgotten" && (c.resolvedAt ?? 0) >= (c.deadline ?? c.awakenedAt + CRISIS_MS);
+  const curse = { ...c, pactResolved: true };
+  if (!failedByTime) return say({ ...s, curse }, `${p.name} aceitou o pacto, mas a cidade não cumpriu sua promessa.`, "info");
+  // Recover the exact deduction, including its floor, from the saved pre-penalty balance.
+  const before = c.penaltyBalances?.[p.id];
+  if (before === undefined) return { ...s, curse };
+  const refund = Math.floor(Math.max(0, before) * (4 - Object.keys(c.altars).length) * PENALTY_PER_SEAL / 100);
+  const owners = { ...s.owners };
+  for (const i of c.consumed) if (boardFor(s)[i]?.kind === "property") owners[i] = p.id;
+  return say({ ...patch(s, p.id, { balance: p.balance + refund }), owners, curse }, `${p.name} revelou o Pacto das Sombras: escapou da penalidade e herdou os imóveis na névoa, ainda sem aluguel.`, "bad");
 }

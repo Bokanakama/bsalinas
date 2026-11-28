@@ -27,6 +27,7 @@ function tone(freq: number, dur: number, type: OscillatorType = "square", delay 
 export const sfx = {
   unlock: () => ac(),
   blackout: () => { tone(55, 1.8, "sine", 0, 0.09); tone(82, 1.2, "triangle", 0.3, 0.04); tone(392, 2, "sine", 0.6, 0.03); },
+  ghostWind: () => { tone(70, .8, "triangle", 0, .025); tone(105, .9, "sine", .1, .02); tone(180, .6, "sine", .2, .012); },
   dice: () => { for (let i = 0; i < 8; i++) tone(200 + Math.random() * 400, 0.05, "square", i * 0.07, 0.05); },
   step: () => tone(660, 0.06, "triangle"),
   coin: () => { tone(988, 0.1, "square", 0); tone(1319, 0.25, "square", 0.08); },

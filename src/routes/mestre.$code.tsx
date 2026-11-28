@@ -1,12 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { publishState, joinRoomChannel, openRoom, accessRoom } from "@/lib/room";
+import { publishState, joinRoomChannel, openRoom, accessRoom, type ShadowPact } from "@/lib/room";
 import { createRefreshQueue, roomPollMs } from "@/lib/room-sync";
 import * as G from "@/lib/game";
 import { SelvaRulesButton } from "@/components/SelvaGuide";
 import { CurseReveal, HorrorPanel, HorrorRulesButton } from "@/components/HorrorPanel";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { Board } from "@/components/Board";
 import { DicePair } from "@/components/Dice";
 import { music, sfx, voice, type VoiceClip } from "@/lib/sfx";
@@ -51,6 +52,8 @@ function Master() {
   const queued = useRef(new Set<string>());
   const generation = useRef(0);
   const queue = useRef(Promise.resolve());
+  const privatePact = useRef<ShadowPact | null>(null);
+  const pactOpened = useRef(false);
 
   const commit = useCallback((next: G.GameState) => {
     ref.current = next;
@@ -73,11 +76,26 @@ function Master() {
       case "scratch": s = G.revealCard(s, a.player_id); break;
       case "bid": s = G.bid(s, a.player_id, Number(p.amount)); break;
       case "pass": s = G.passBid(s, a.player_id); break;
-      case "horrorTick": { const next = G.horrorTick(s, Date.now(), Math.random()); if (next === s) return; s = next; break; }
+      case "horrorTick": {
+        const now = Date.now();
+        const before = s;
+        s = G.horrorTick(s, now, Math.random());
+        if (G.horrorActive(s) && s.horrorOptions?.pact && s.curse && now >= s.curse.awakenedAt + 360000 && !pactOpened.current) {
+          privatePact.current = await accessRoom(code, "pactOpen", {}, true) as ShadowPact | null;
+          if (privatePact.current) pactOpened.current = true;
+        }
+        if (s === before) return;
+        break;
+      }
+      case "configureHorror": s = G.configureHorror(s, !!(p as { pact?: boolean }).pact); break;
       case "purifyAltar": { const h = p as { square?: number; sacrifice?: number }; s = G.purifyAltar(s, a.player_id, Number(h.square), h.sacrifice); break; }
+      case "requestAltarHelp": s = G.requestAltarHelp(s, a.player_id, Number((p as { square?: number }).square), Date.now()); break;
+      case "donateAltar": s = G.donateAltar(s, a.player_id, Number(p.id), Number(p.amount), Date.now()); break;
+      case "finishAltarHelp": s = G.finishAltarHelp(s, a.player_id, Number(p.id), Date.now()); break;
+      case "cancelAltarHelp": s = G.cancelAltarHelp(s, a.player_id, Number(p.id)); break;
       case "useTorch": s = G.useTorch(s, a.player_id, String(p.to ?? a.player_id)); break;
       case "repelGhost": s = G.repelGhost(s, a.player_id); break;
-      case "travelAltar": s = G.travelAltar(s, a.player_id); break;
+      case "travelAltar": s = G.travelAltar(s, a.player_id, (p as { square?: number }).square); break;
       case "repayLoan": s = G.repayLoan(s, a.player_id, Number(p.amount)); break;
       case "mortgage": s = G.mortgage(s, a.player_id, Number((p as { square?: number }).square)); break;
       case "unmortgage": s = G.unmortgage(s, a.player_id, Number((p as { square?: number }).square)); break;
@@ -140,8 +158,13 @@ function Master() {
         break;
       }
     }
+    if (ref.current?.curse?.stage === "awake" && s.curse?.stage !== "awake" && s.horrorOptions?.pact) {
+      const pact = await accessRoom(code, "pactClose", {}, true) as ShadowPact | null;
+      s = G.settleShadowPact(s, pact);
+    }
+    if (epoch !== generation.current) return;
     commit(s);
-  }, [commit]);
+  }, [commit, code]);
 
   const enqueue = useCallback((a: ActionRow) => {
     if (seen.current.has(a.id) || queued.current.has(a.id)) return;
@@ -158,6 +181,7 @@ function Master() {
     generation.current++;
     seen.current.clear(); queued.current.clear(); ref.current = null;
     setState(null); setMissing(false);
+    privatePact.current = null; pactOpened.current = false;
     let alive = true, live = false, lastRead = 0;
     let room: ReturnType<typeof joinRoomChannel> | undefined;
     const reads = createRefreshQueue(async () => {
@@ -171,7 +195,10 @@ function Master() {
       const data = await openRoom(code, true);
       if (!alive) return;
       if (!data) { setMissing(true); return; }
+      privatePact.current = data.privatePact ?? null;
+      pactOpened.current = !!data.privatePact;
       let s = G.resumeLegacyHorror(data.state, Date.now());
+      if (s.curse?.stage !== "awake" && data.privatePact?.accepted && !s.curse?.pactResolved) s = G.settleShadowPact(s, data.privatePact);
       if (s !== data.state) commit(s);
       if (s.cityEvent?.kind === "padroeira" && s.cityEvent.expiresAt === undefined) {
         s = { ...s, cityEvent: G.activeCityEvent(s) ? { ...s.cityEvent, expiresAt: Date.now() + G.CITY_EVENT_MS } : null };
@@ -400,6 +427,7 @@ function Master() {
         <p className="font-display text-[5.0cqw]">Entre pelo celular</p>
         <div className="rounded-lg border-4 border-border bg-card p-2"><QRCodeSVG value={joinUrl} size={256} style={{ width: "34cqw", height: "34cqw" }} /></div>
         <p className="font-display text-[9cqw] leading-none tracking-[0.3em] text-primary">{code}</p>
+        {G.cityOf(state) === "esquecidos" && <label className="flex items-center gap-3 text-sm"><Switch aria-label="Pacto das Sombras opcional" checked={state.horrorOptions?.pact === true} onCheckedChange={(pact) => hostAct("configureHorror", { pact })} /><span>Pacto das Sombras · traição opcional</span></label>}
         <button
           onClick={() => { sfx.unlock(); commit(G.start(state)); }}
           disabled={state.players.length < 2}
@@ -506,7 +534,7 @@ function Master() {
   return (
     <main className={`${G.cityOf(state) === "salinas" ? "" : `${G.cityOf(state)}-game `}${G.horrorActive(state) ? "curse-awake " : ""}azulejo relative flex h-dvh items-center justify-center overflow-hidden p-[1vmin]`}>
       <div className="flex size-full min-h-0 min-w-0 items-center justify-center" style={{ containerType: "size" }}>
-        <Board state={state} center={center} side={side} displayPos={displayPos} focus={focus} />
+        <Board state={state} center={center} side={side} displayPos={displayPos} focus={focus} horrorSound={voiceOn} />
       </div>
 
       {G.cityOf(state) === "esquecidos" && <CurseReveal state={state} code={code} />}

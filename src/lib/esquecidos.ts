@@ -13,6 +13,15 @@ export const GHOST_MAX_MS = 30_000;
 export const GHOST_TRIBUTE = 50;
 export const CURSE_ROUND = 8;
 export const RITUAL_COST = 200;
+export const ALTAR_HELP_MS = 10_000;
+export const RITUAL_TUNING_MS = 3_000;
+export interface AltarAppeal {
+  id: number;
+  playerId: string;
+  altar: number;
+  endsAt: number;
+  contributions: Record<string, number>;
+}
 export const CURSE_MESSAGE = "Vocês não foram escolhidos para comprar esta cidade. Foram escolhidos para permanecer nela.";
 export interface Curse {
   stage: "awake" | "escaped" | "forgotten";
@@ -22,6 +31,13 @@ export interface Curse {
   resolvedAt?: number;
   penaltyRate?: number;
   lastSealRollId?: number;
+  /** New crises allow any unlit altar; absent preserves older room order. */
+  freeAltars?: boolean;
+  appeal?: AltarAppeal | null;
+  helpers?: string[];
+  lastGhostHit?: { id: number; players: string[] };
+  pactResolved?: boolean;
+  penaltyBalances?: Record<string, number>;
   layout?: number[];
   nextShiftAt?: number;
   shifts?: number;

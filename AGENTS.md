@@ -55,3 +55,6 @@ use the editor.
 - Optional wallet dialogs load lazily with intent prefetch for trade/map — reduces initial gameplay code without removing controls.
 - Horror sensory feedback is client-local, opt-in for audio/haptics, stops on hidden/unfocused pages and honors reduced motion; shared state only supplies positions and sanity — prevents sensory preferences from changing game rules or writing room state.
 - The TV ghost animates one overlay through perimeter cell coordinates while purified altars use scoped styles — preserves board geometry and keeps player positions authoritative.
+- New crises opt into flexible altars; saved crises without the flag keep their sequence, and altar appeals reserve/refund funds on the master queue — preserves compatibility and prevents duplicate charges.
+- Shadow pacts live outside room state in capability-gated private storage; original join-seat bindings authorize private reads/answers, and only the master applies idempotent settlement after resolution — prevents participant-wide secret leakage.
+- Ritual tuning is a local, optional timing interaction with no financial penalty; final offerings remain master-validated — keeps accessibility and room authority intact.

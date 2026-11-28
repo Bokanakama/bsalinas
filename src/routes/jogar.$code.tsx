@@ -14,6 +14,7 @@ import { SelvaIntro, SelvaRulesButton } from "@/components/SelvaGuide";
 import { CurseReveal, HorrorPanel, HorrorRulesButton } from "@/components/HorrorPanel";
 import { UpdateNotes } from "@/components/UpdateNotes";
 import { HorrorSenses } from "@/components/HorrorSenses";
+import { ShadowPact } from "@/components/ShadowPact";
 
 const loadTrade = () => import("@/components/TradeTable");
 const loadMap = () => import("@/components/MiniMap");
@@ -170,7 +171,7 @@ function Wallet() {
       </header>
 
       <UpdateNotes city={G.cityOf(state)} />
-      {G.cityOf(state) === "esquecidos" && <><div className="flex justify-end gap-2"><HorrorSenses key={`${code}-${pid}`} state={state} playerId={pid} /><HorrorRulesButton /></div><CurseReveal state={state} code={code} /><HorrorPanel state={state} playerId={pid} act={act} /></>}
+      {G.cityOf(state) === "esquecidos" && <><div className="flex justify-end gap-2"><HorrorSenses key={`${code}-${pid}`} state={state} playerId={pid} /><HorrorRulesButton /></div><CurseReveal state={state} code={code} /><ShadowPact state={state} code={code} playerId={pid} /><HorrorPanel state={state} playerId={pid} act={act} /></>}
       {!!me.loan && !me.out && !G.horrorActive(state) && (
         <Card>
           <p className="text-xs font-bold uppercase text-muted-foreground">🏛️ Financiamento bancário</p>

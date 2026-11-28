@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import * as G from "@/lib/game";
 import { ALTARS, CRISIS_MS, GHOST_MIN_MS, GHOST_MAX_MS } from "@/lib/esquecidos";
 const playing = () => G.start(G.join(G.join(G.newState("esquecidos"), "a", "Ana", "gato"), "b", "Bia", "coelho"));
-const awake = () => G.horrorTick({ ...playing(), round: 8 }, 1000, 0);
+// Legacy sequential crisis fixtures retain the original saved-room rules.
+const awake = () => { const s = G.horrorTick({ ...playing(), round: 8 }, 1000, 0); return s.curse ? { ...s, curse: { ...s.curse, freeAltars: false } } : s; };
 const bal = (s: G.GameState, id: string) => s.players.find((p) => p.id === id)?.balance;
 
 describe("Esquecidos mid-game crisis", () => {

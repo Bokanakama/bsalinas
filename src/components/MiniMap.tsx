@@ -1,4 +1,4 @@
-import { boardFor, type GameState } from "@/lib/game";
+import { boardFor, horrorActive, availableAltars, type GameState } from "@/lib/game";
 import { Animal } from "./Animal";
 
 /** Phone: quick look at every square and where each player is. */
@@ -16,8 +16,10 @@ export function MiniMap({ state, onClose }: { state: GameState; onClose: () => v
               <li key={i} className={`flex min-h-14 flex-col overflow-hidden rounded-md border-2 text-[10px] leading-tight ${here.length ? "border-primary ring-2 ring-primary" : "border-border/40"}`}>
                 <span className="h-1.5 shrink-0" style={{ background: b.group !== undefined ? `var(--group-${b.group})` : "var(--muted)" }} />
                 <span className="px-1 font-bold">{i}. {b.name}</span>
+                {horrorActive(state) && [0,17,28,45].includes(i) && <span className="px-1 font-bold text-secondary">{state.curse?.altars[i] ? "🔥 Purificado" : availableAltars(state).includes(i) ? "Selo livre" : "Trancado"}</span>}
+                {horrorActive(state) && state.curse?.ghost === i && <span className="px-1 text-primary">👻 Fantasma</span>}
                 {owner && <span className="px-1" style={{ color: owner.color }}>{owner.name}</span>}
-                {here.length > 0 && <span className="mt-auto flex flex-wrap px-0.5">{here.map((p) => <Animal key={p.id} id={p.animal} className="h-6 w-auto" />)}</span>}
+                {here.length > 0 && <span className="mt-auto flex flex-wrap px-0.5">{here.map((p) => <Animal key={p.id} id={p.animal} alt={horrorActive(state) && (state.curse?.sanity[p.id] ?? 0) <= 0 ? `${p.name} · perdido nas sombras` : p.name} className={`h-6 w-auto ${horrorActive(state) && (state.curse?.sanity[p.id] ?? 0) <= 0 ? "player-lost" : ""}`} />)}</span>}
               </li>
             );
           })}

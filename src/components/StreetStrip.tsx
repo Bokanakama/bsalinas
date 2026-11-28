@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { boardFor, housesAt, isMortgaged, money, rentFor, cityOf, type GameState } from "@/lib/game";
+import { boardFor, housesAt, isMortgaged, money, rentFor, cityOf, horrorActive, availableAltars, type GameState } from "@/lib/game";
 import { Animal } from "./Animal";
 import { sfx } from "@/lib/sfx";
 
@@ -47,13 +47,14 @@ export function StreetStrip({ state, playerId, onPick }: { state: GameState; pla
                 <div className="shrink-0 text-xs leading-4">{ICON[sq.kind] ?? "•"}</div>
               )}
               <p className={`px-0.5 font-display leading-tight break-words ${center ? "text-sm font-semibold" : "text-xs font-semibold"}`}>{sq.name}</p>
+              {horrorActive(state) && [0,17,28,45].includes(i) && <span className="text-[10px] text-secondary">{state.curse?.altars[i] ? "🔥 Purificado" : availableAltars(state).includes(i) ? "Selo livre" : "Trancado"}</span>}
               {center && sq.kind === "property" && (
                 <p className="text-xs font-semibold leading-tight">{owner ? `Dono: ${owner.name}` : money(sq.price!)}<br />Aluguel {money(rentFor(state, i))}</p>
               )}
               {center && sq.amount ? <p className="text-xs font-bold">{(sq.kind === "bonus" ? "+" : "−") + money(sq.amount)}</p> : null}
               <div className={`mt-auto flex justify-center pb-1 ${cityOf(state) === "esquecidos" ? "gap-1" : "-space-x-3"}`}>
                 {here.map((p) => (
-                  cityOf(state) === "esquecidos" ? <span key={`${p.id}-${i}`} className="player-pin street-pin" title={p.name} style={{ "--player-color": p.color } as CSSProperties}><Animal id={p.animal} alt={p.name} className={center ? "h-7 w-auto" : "h-5 w-auto"} /><span className="player-pin-number">{state.players.indexOf(p) + 1}</span></span> : <Animal key={`${p.id}-${i}`} badge id={p.animal} alt={p.name} className={`animate-hop w-auto ${center ? (p.id === playerId ? "h-9" : "h-6") : "h-5"}`} />
+                  cityOf(state) === "esquecidos" ? <span key={`${p.id}-${i}`} className={`player-pin street-pin ${horrorActive(state) && (state.curse?.sanity[p.id] ?? 0) <= 0 ? "player-lost" : ""}`} title={p.name} style={{ "--player-color": p.color } as CSSProperties}><Animal id={p.animal} alt={p.name} className={center ? "h-7 w-auto" : "h-5 w-auto"} /><span className="player-pin-number">{state.players.indexOf(p) + 1}</span></span> : <Animal key={`${p.id}-${i}`} badge id={p.animal} alt={p.name} className={`animate-hop w-auto ${center ? (p.id === playerId ? "h-9" : "h-6") : "h-5"}`} />
                 ))}
               </div>
             </button>

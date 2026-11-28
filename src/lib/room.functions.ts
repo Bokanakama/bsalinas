@@ -6,7 +6,7 @@ import { newState } from "./game";
 import type { Database, Json } from "@/integrations/supabase/types";
 
 const request = z.object({
-  op: z.enum(["create", "join", "read", "write", "actions", "send", "prune"]),
+  op: z.enum(["create", "join", "read", "write", "actions", "send", "prune", "pact", "pactOpen", "pactAnswer", "pactClose"]),
   code: z.string().regex(/^[A-Z]{4,8}$/),
   token: z.string().regex(/^[a-f0-9]{64}$/).optional(),
   payload: z.record(z.unknown()).default({}),
