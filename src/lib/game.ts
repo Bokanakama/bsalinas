@@ -1,4 +1,4 @@
-import { ALTARS, CURSE_MESSAGE, CURSE_ROUND, ESQUECIDOS_BOARD, ESQUECIDOS_CARDS, ESQUECIDOS_EVENTS, FOG_MS, RITUAL_COST, type Curse } from "./esquecidos";
+import { ALTARS, CRISIS_MS, GHOST_MIN_MS, GHOST_MAX_MS, GHOST_TRIBUTE, SHIFT_MIN_MS, SHIFT_MAX_MS, SEAL_REWARD, PENALTY_PER_SEAL, CURSE_MESSAGE, CURSE_ROUND, ESQUECIDOS_BOARD, ESQUECIDOS_CARDS, ESQUECIDOS_EVENTS, FOG_MS, RITUAL_COST, type Curse } from "./esquecidos";
 import { BORO_BOARD, BORO_CARDS, BORO_EVENTS } from "./boro";
 import { BEAST_BITE, BEAST_START, RELIC_NAMES, RELIC_SQUARES, RELIC_STEAL, SELVA_BOARD, SELVA_CARDS, SELVA_EVENTS } from "./selva";
 // Pure game rules for Banco Imobiliário Salinas. The master device is the only writer of GameState.
@@ -130,7 +130,12 @@ export const LUCK_CARDS: LuckCard[] = [
 ];
 
 export const cityOf = (s?: Pick<GameState, "city">): CityId => s?.city === "boro" || s?.city === "selva" || s?.city === "esquecidos" ? s.city : "salinas";
-export const boardFor = (s?: Pick<GameState, "city">) => ({ salinas: BOARD, boro: BORO_BOARD, selva: SELVA_BOARD, esquecidos: ESQUECIDOS_BOARD })[cityOf(s)];
+export function boardFor(s?: Pick<GameState, "city"> & Partial<Pick<GameState, "curse">>): Square[] {
+  const base = ({ salinas: BOARD, boro: BORO_BOARD, selva: SELVA_BOARD, esquecidos: ESQUECIDOS_BOARD })[cityOf(s)];
+  const layout = s?.curse?.layout;
+  if (cityOf(s) !== "esquecidos" || !layout || layout.length !== base.length || new Set(layout).size !== base.length || !layout.every((source, i) => Number.isInteger(source) && base[source] && (source === i || (base[source]?.kind === "property" && base[i]?.kind === "property")))) return base;
+  return layout.map((source, i) => base[source] ?? base[i] ?? { name: "", kind: "rest" });
+}
 export const cardsFor = (s: GameState) => ({ salinas: LUCK_CARDS, boro: BORO_CARDS, selva: SELVA_CARDS, esquecidos: ESQUECIDOS_CARDS })[cityOf(s)];
 export const eventsFor = (s: GameState) => ({ salinas: CITY_EVENTS, boro: BORO_EVENTS, selva: SELVA_EVENTS, esquecidos: ESQUECIDOS_EVENTS })[cityOf(s)];
 export const cityName = (s: GameState) => ({ salinas: "Salinas", boro: "Cidade Boró", selva: "Selva dos Tambores", esquecidos: "Cidade dos Esquecidos" })[cityOf(s)];
@@ -221,7 +226,7 @@ export interface GameState {
   beast?: number;
   /** Selva: relic index -> holder player id. */
   relics?: Record<string, string>;
-  /** Esquecidos only: shared cooperative finale, no private roles in public state. */
+  /** Esquecidos only: shared cooperative crisis, no private roles in public state. */
   curse?: Curse;
 }
 
@@ -534,7 +539,7 @@ export function finishCollect(s: GameState, now = Date.now()): GameState {
 
 /** Rent: stations scale by count, utilities by dice, streets double with full color and multiply with barraquinhas. */
 export function rentFor(s: GameState, square: number): number {
-  if (horrorActive(s)) return 0;
+  if (horrorActive(s) || (cityOf(s) === "esquecidos" && s.curse?.stage === "forgotten" && s.curse.consumed.includes(square))) return 0;
   const sq = boardFor(s)[square]!;
   const owner = s.owners[square];
   const base = sq.rent ?? 0;
@@ -601,9 +606,8 @@ function bankrupt(s: GameState, id: string, creditor: string, keepPending = fals
   next = patch(next, id, { out: true, balance: 0, jail: 0, doubles: 0 });
   next = say(next, `${p.name} faliu!${creditor !== BANK ? ` Bens vão para ${nameOf(s, creditor)}` : ""}`, "bad");
   const alive = next.players.filter((x) => !x.out);
-  if (horrorActive(next)) {
-    if (!alive.some((x) => (next.curse?.sanity[x.id] ?? 0) > 0)) return horrorFinish(next, false);
-  } else if (alive.length <= 1) next = say({ ...next, phase: "over", winner: alive[0]?.id ?? null }, `${alive[0]?.name ?? "Ninguém"} venceu a partida!`, "good");
+  if (horrorActive(next) && !alive.some((x) => (next.curse?.sanity[x.id] ?? 0) > 0)) next = horrorFinish(next, false);
+  if (alive.length <= 1) next = say({ ...next, phase: "over", winner: alive[0]?.id ?? null }, `${alive[0]?.name ?? "Ninguém"} venceu a partida!`, "good");
   return next;
 }
 /** Cash the player could still raise by mortgaging lands (no barraquinhas in their color). */
@@ -920,34 +924,106 @@ export function altarNear(s: GameState, id: string, altar: number): boolean {
   return Math.min(distance, boardFor(s).length - distance) <= 6;
 }
 
-/** Master-only queue tick; random and time are supplied by the caller, persisted once. */
+/** Upgrade old terminal ritual rooms without replaying financial rewards or deductions. */
+export function resumeLegacyHorror(s: GameState, now: number): GameState {
+  if (cityOf(s) !== "esquecidos" || !s.curse || s.curse.version === 2) return s;
+  const c = s.curse;
+  const curse: Curse = { ...c, version: 2, deadline: c.awakenedAt + CRISIS_MS, nextShiftAt: now + SHIFT_MIN_MS, nextGhostAt: now + GHOST_MIN_MS, ghost: 28 };
+  if (s.phase !== "over" || s.winner || c.stage === "awake") return { ...s, curse };
+  return say({ ...s, phase: "playing", winner: null, pending: null, moving: false, curse: { ...curse, resolvedAt: now, penaltyRate: 0, consumed: c.stage === "escaped" ? [] : c.consumed } }, "O ritual terminou, mas a partida continua. Banco reaberto!", "info");
+}
+const intervalFrom = (random: number, min: number, max: number) => min + Math.floor(Math.min(1, Math.max(0, random)) * (max - min));
+
+/** Exchange properties, not perimeter cells or players; all attached assets follow the property. */
+export function shiftProperties(s: GameState, random: number): GameState {
+  const c = s.curse;
+  if (!horrorActive(s) || !c || s.moving || s.pending) return s;
+  const slots = boardFor(s).flatMap((sq, i) => sq.kind === "property" ? [i] : []);
+  const offset = Math.min(slots.length - 1, Math.max(0, Math.floor(random * slots.length)));
+  const a = slots[offset], b = slots[(offset + Math.max(1, Math.floor(slots.length / 2))) % slots.length];
+  if (a === undefined || b === undefined || a === b) return s;
+  const layout = [...(c.layout ?? ESQUECIDOS_BOARD.map((_, i) => i))];
+  const sourceA = layout[a], sourceB = layout[b];
+  if (sourceA === undefined || sourceB === undefined) return s;
+  layout[a] = sourceB; layout[b] = sourceA;
+  function swap<T>(record: Record<string, T> | undefined, a: number, b: number): Record<string, T> {
+    const copy = { ...record }, av = record?.[a], bv = record?.[b];
+    delete copy[a]; delete copy[b];
+    if (bv !== undefined) copy[a] = bv;
+    if (av !== undefined) copy[b] = av;
+    return copy;
+  }
+  return say({ ...s, owners: swap(s.owners, a, b), houses: swap(s.houses, a, b), mortgaged: swap(s.mortgaged, a, b), offer: null, curse: { ...c, layout, shifts: (c.shifts ?? 0) + 1, lastShift: [a, b], consumed: c.consumed.map((i) => i === a ? b : i === b ? a : i) } }, `A cidade se moveu: ${boardFor(s)[a]?.name} e ${boardFor(s)[b]?.name} trocaram de lugar. Donos e construções foram junto.`, "info");
+}
+
+/** Master-only tick: every randomized deadline and result is saved once for every device. */
 export function horrorTick(s: GameState, now: number, random = 0): GameState {
-  if (cityOf(s) !== "esquecidos" || s.phase !== "playing" || s.moving || s.pending) return s;
+  if (cityOf(s) !== "esquecidos" || s.phase !== "playing" || s.moving) return s;
+  if (horrorActive(s) && s.curse && now >= (s.curse.deadline ?? s.curse.awakenedAt + CRISIS_MS)) return horrorFinish(s, false, now);
+  if (s.pending) return s;
   if (!s.curse) {
     const properties = boardFor(s).filter((sq) => sq.kind === "property").length;
-    const bought = Object.keys(s.owners).length;
-    if ((s.round ?? 0) < CURSE_ROUND && bought < Math.ceil(properties / 2)) return s;
+    if ((s.round ?? 0) < CURSE_ROUND && Object.keys(s.owners).length < Math.ceil(properties / 2)) return s;
     const rotate = Math.min(3, Math.max(0, Math.floor(random * 4)));
     const order = [...ALTARS.slice(rotate), ...ALTARS.slice(0, rotate)];
-    const curse: Curse = { stage: "awake", awakenedAt: now, nextFogAt: now + FOG_MS, fogGroups: [], consumed: [], altars: {}, sanity: Object.fromEntries(s.players.filter((p) => !p.out).map((p) => [p.id, 100])), torches: Object.fromEntries(s.players.filter((p) => !p.out).map((p) => [p.id, 2])), clue: 0, order };
+    const curse: Curse = { version: 2, stage: "awake", awakenedAt: now, deadline: now + CRISIS_MS, nextFogAt: now + FOG_MS, nextShiftAt: now + intervalFrom(random, SHIFT_MIN_MS, SHIFT_MAX_MS), nextGhostAt: now + intervalFrom(random, GHOST_MIN_MS, GHOST_MAX_MS), ghost: 28, fogGroups: [], consumed: [], altars: {}, sanity: Object.fromEntries(s.players.filter((p) => !p.out).map((p) => [p.id, 100])), torches: Object.fromEntries(s.players.filter((p) => !p.out).map((p) => [p.id, 2])), clue: 0, order };
     return say({ ...s, curse, cityEvent: null, offer: null, card: null, transfer: null, players: s.players.map((p) => ({ ...p, jail: 0, doubles: 0 })) }, CURSE_MESSAGE, "bad");
   }
-  if (!horrorActive(s) || now < s.curse.nextFogAt) return s;
-  const c = s.curse;
-  const groups = Array.from({ length: 8 }, (_, i) => i).filter((g) => !c.fogGroups.includes(g));
-  const group = groups[Math.min(groups.length - 1, Math.max(0, Math.floor(random * groups.length)))];
-  if (group === undefined) return s;
-  const lost = boardFor(s).flatMap((sq, i) => sq.group === group ? [i] : []);
-  const owners = { ...s.owners }, houses = { ...s.houses }, mortgaged = { ...s.mortgaged };
-  for (const i of lost) { delete owners[i]; delete houses[i]; delete mortgaged[i]; }
-  const curse: Curse = { ...c, consumed: [...c.consumed, ...lost], fogGroups: [...c.fogGroups, group], nextFogAt: c.nextFogAt + FOG_MS };
-  const offer = s.offer && [...s.offer.giveSquares, ...s.offer.wantSquares].some((i) => lost.includes(i)) ? null : s.offer ?? null;
-  const next = say({ ...s, curse, owners, houses, mortgaged, offer }, `A névoa devorou o bairro ${group + 1}. Suas propriedades desapareceram.`, "bad");
-  return curse.fogGroups.length >= 8 ? horrorFinish(next, false) : next;
+  if (!horrorActive(s)) return s;
+  if (now >= (s.curse.deadline ?? s.curse.awakenedAt + CRISIS_MS)) return horrorFinish(s, false, now);
+  let next = s;
+  let c = s.curse;
+  if (now >= c.nextFogAt) {
+    const groups = Array.from({ length: 8 }, (_, i) => i).filter((g) => !c.fogGroups.includes(g));
+    const group = groups[Math.min(groups.length - 1, Math.max(0, Math.floor(random * groups.length)))];
+    if (group !== undefined) {
+      const lost = boardFor(s).flatMap((sq, i) => sq.group === group ? [i] : []);
+      c = { ...c, consumed: [...new Set([...c.consumed, ...lost])], fogGroups: [...c.fogGroups, group], nextFogAt: now + FOG_MS };
+      next = say({ ...next, curse: c }, `A névoa cobriu o bairro ${group + 1}. Quebrem os selos para salvar seus aluguéis!`, "bad");
+      if (c.fogGroups.length >= 8) return horrorFinish(next, false, now);
+    }
+  }
+  if (now >= (c.nextShiftAt ?? now + SHIFT_MIN_MS)) {
+    next = shiftProperties(next, random);
+    c = next.curse ?? c;
+    c = { ...c, nextShiftAt: now + intervalFrom(1 - random, SHIFT_MIN_MS, SHIFT_MAX_MS) };
+    next = { ...next, curse: c };
+  }
+  if (now >= (c.nextGhostAt ?? now + GHOST_MIN_MS)) {
+    const steps = 1 + Math.min(5, Math.max(0, Math.floor(random * 6)));
+    const from = c.ghost ?? 28;
+    const crossed = Array.from({ length: steps }, (_, i) => (from + i + 1) % boardFor(s).length);
+    const sanity = { ...c.sanity };
+    for (const p of next.players.filter((p) => !p.out && crossed.includes(p.pos))) {
+      const tribute = Math.min(GHOST_TRIBUTE, Math.max(0, p.balance));
+      next = move(next, p.id, BANK, tribute, "Tributo do fantasma");
+      sanity[p.id] = Math.max(0, (sanity[p.id] ?? 100) - 10);
+      next = say(next, `👻 O fantasma atravessou ${p.name}: −${money(tribute)} e −10 de sanidade.`, "bad");
+    }
+    c = { ...c, sanity, ghost: (from + steps) % boardFor(s).length, nextGhostAt: now + intervalFrom(random, GHOST_MIN_MS, GHOST_MAX_MS) };
+    next = { ...next, curse: c };
+  }
+  if (!next.players.some((p) => !p.out && (c.sanity[p.id] ?? 0) > 0)) return horrorFinish(next, false, now);
+  // A ghost can drain the current player's sanity between rolls; do not leave that turn stuck.
+  if ((c.sanity[current(next)?.id ?? ""] ?? 0) <= 0) return horrorEndTurn(next);
+  return next;
 }
-function horrorFinish(s: GameState, escaped: boolean): GameState {
-  if (!s.curse) return s;
-  return say({ ...s, phase: "over", winner: null, pending: null, moving: false, offer: null, curse: { ...s.curse, stage: escaped ? "escaped" : "forgotten" } }, escaped ? "Os quatro altares se acenderam. Todos escaparam! A cidade voltou a lembrar seus nomes." : "A cidade esqueceu seus nomes. A maldição venceu…", escaped ? "good" : "bad");
+function horrorFinish(s: GameState, contained: boolean, now = Date.now()): GameState {
+  const c = s.curse;
+  if (!c || c.stage !== "awake") return s;
+  const missing = 4 - Object.keys(c.altars).length;
+  const penaltyRate = contained ? 0 : missing * PENALTY_PER_SEAL / 100;
+  const helpers = new Set(Object.values(c.altars));
+  const players = s.players.map((p) => p.out ? p : { ...p, balance: contained ? p.balance + (helpers.has(p.id) ? SEAL_REWARD : 0) : p.balance - Math.floor(Math.max(0, p.balance) * missing * PENALTY_PER_SEAL / 100), jail: 0, doubles: 0 });
+  return say({ ...s, players, phase: "playing", winner: null, pending: null, moving: false, offer: null, curse: { ...c, version: 2, stage: contained ? "escaped" : "forgotten", resolvedAt: now, penaltyRate, consumed: contained ? [] : c.consumed } }, contained ? "Quatro selos quebrados! Banco reaberto, névoa dissipada. Cada participante do ritual recebe B$ 250, uma vez. A partida continua!" : `Banco reaberto em emergência. ${missing} selo(s) faltando: todos perdem ${Math.round(penaltyRate * 100)}% do saldo; imóveis cobertos ficam sem aluguel. A partida continua!`, contained ? "good" : "bad");
+}
+export function repelGhost(s: GameState, id: string): GameState {
+  const c = s.curse, p = s.players.find((p) => p.id === id);
+  if (!horrorActive(s) || !c || !p || p.out || s.moving || s.pending || (c.sanity[id] ?? 0) <= 0 || (c.torches[id] ?? 0) < 1) return s;
+  const ghost = c.ghost ?? 28;
+  const distance = Math.abs(ghost - p.pos);
+  if (Math.min(distance, boardFor(s).length - distance) > 6) return s;
+  return say({ ...s, curse: { ...c, ghost: (ghost + boardFor(s).length - 10) % boardFor(s).length, torches: { ...c.torches, [id]: (c.torches[id] ?? 0) - 1 } } }, `${p.name} afastou o fantasma 10 casas com uma tocha!`, "good");
 }
 function horrorEndTurn(s: GameState): GameState {
   if (!s.curse || !s.players.length) return s;
@@ -978,7 +1054,7 @@ function horrorLand(s: GameState, random: number): GameState {
 /** Ritual and torch actions are voluntary and do not consume the dice turn. */
 export function purifyAltar(s: GameState, id: string, altar: number, sacrifice?: number): GameState {
   const p = s.players.find((x) => x.id === id), c = s.curse;
-  if (!horrorActive(s) || s.moving || s.pending || !p || p.out || !c || (c.sanity[id] ?? 0) <= 0 || ritualTarget(s) !== altar || !altarNear(s, id, altar)) return s;
+  if (!horrorActive(s) || s.moving || s.pending || !p || p.out || !c || (c.sanity[id] ?? 0) <= 0 || ritualTarget(s) !== altar || c.lastSealRollId === s.rollId || !altarNear(s, id, altar)) return s;
   let next = s;
   if (sacrifice !== undefined) {
     if (!Number.isInteger(sacrifice) || s.owners[sacrifice] !== id) return s;
@@ -990,7 +1066,7 @@ export function purifyAltar(s: GameState, id: string, altar: number, sacrifice?:
     next = move(s, id, BANK, RITUAL_COST, "Oferenda ao altar");
   }
   const altars = { ...c.altars, [altar]: id };
-  next = say({ ...next, curse: { ...c, altars, sanity: { ...c.sanity, [id]: Math.min(100, (c.sanity[id] ?? 0) + 20) } } }, `${p.name} purificou ${boardFor(s)[altar]?.name}: ${Object.keys(altars).length}/4 selos quebrados!`, "good");
+  next = say({ ...next, curse: { ...c, altars, lastSealRollId: s.rollId, sanity: { ...c.sanity, [id]: Math.min(100, (c.sanity[id] ?? 0) + 20) } } }, `${p.name} purificou ${boardFor(s)[altar]?.name}: ${Object.keys(altars).length}/4 selos quebrados!`, "good");
   return Object.keys(altars).length === 4 ? horrorFinish(next, true) : next;
 }
 export function useTorch(s: GameState, id: string, target = id): GameState {

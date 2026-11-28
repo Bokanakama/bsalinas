@@ -181,7 +181,7 @@ function Wallet() {
       <Gazette state={state} className="text-sm" />
       <RelicTracker state={state} className="text-sm" />
       {pd?.kind === "scratch" && pd.playerId !== pid && <ScratchingBanner state={state} />}
-      {state.phase === "over" && !state.curse && <MoneyRain />}
+      {state.phase === "over" && <MoneyRain />}
       {touchesMe && <TransferShow state={state} top />}
 
       {state.phase === "lobby" ? (
@@ -199,7 +199,7 @@ function Wallet() {
             </div>
           </div>
           <div className="my-3 flex justify-center"><DicePair dice={state.dice} rollId={state.rollId} size={68} /></div>
-          {state.phase === "over" && <p className="font-display text-2xl">{state.curse ? (state.curse.stage === "escaped" ? "🕯️ Todos escaparam!" : "🌫️ A cidade venceu…") : `🏆 ${state.players.find((p) => p.id === state.winner)?.name} venceu!`}</p>}
+          {state.phase === "over" && <p className="font-display text-2xl">{`🏆 ${state.players.find((p) => p.id === state.winner)?.name ?? "Ninguém"} venceu!`}</p>}
           {me.out && <p className="font-display text-xl text-destructive">Você faliu 😢</p>}
           {myTurn && !pd && !state.moving && me.jail ? (
             <div className="mb-2 rounded-xl border-4 border-border bg-muted p-2">

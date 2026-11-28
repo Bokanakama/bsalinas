@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as G from "@/lib/game";
-import { ALTARS, FOG_MS } from "@/lib/esquecidos";
+import { ALTARS, FOG_MS, CRISIS_MS, SHIFT_MIN_MS, SHIFT_MAX_MS, GHOST_MIN_MS, GHOST_MAX_MS } from "@/lib/esquecidos";
 import { notesFor } from "@/components/UpdateNotes";
 
 const playing = (city: G.CityId = "esquecidos") => G.start(G.join(G.join(G.newState(city), "a", "Ana", "gato"), "b", "Bia", "coelho"));
@@ -40,15 +40,16 @@ describe("Cidade dos Esquecidos", () => {
     expect(s.curse?.order).toEqual([45, 0, 17, 28]);
     expect(G.horrorTick(s, 2000, 0).curse?.order).toEqual([45, 0, 17, 28]);
   });
-  it("consumes one entire district after exactly 90 seconds and removes its assets", () => {
+  it("covers a district at 90 seconds without deleting owners, buildings or mortgages", () => {
     const s = { ...awake(), owners: { 1: "a", 48: "b" }, houses: { 1: 2 }, mortgaged: { 1: true } };
-    expect(G.horrorTick(s, 1000 + FOG_MS - 1)).toBe(s);
+    expect(G.horrorTick(s, 1000 + FOG_MS - 1).curse?.fogGroups).toEqual([]);
     const n = G.horrorTick(s, 1000 + FOG_MS);
     expect(n.curse?.fogGroups).toEqual([0]);
-    expect(n.curse?.consumed).toContain(1);
-    expect(n.owners[1]).toBeUndefined();
-    expect(n.houses?.[1]).toBeUndefined();
-    expect(n.mortgaged?.[1]).toBeUndefined();
+    const slot = G.boardFor(n).findIndex((sq) => sq.name === G.boardFor(s)[1]?.name);
+    expect(n.curse?.consumed).toContain(slot);
+    expect(n.owners[slot]).toBe("a");
+    expect(n.houses?.[slot]).toBe(2);
+    expect(n.mortgaged?.[slot]).toBe(true);
     expect(n.owners[48]).toBe("b");
     expect(n.curse?.nextFogAt).toBe(181000);
   });
@@ -115,25 +116,31 @@ describe("Cidade dos Esquecidos", () => {
     expect(G.land(landed(1), "x").curse?.sanity['a']).toBe(60);
     expect(G.land(landed(17), "x").curse?.sanity['a']).toBe(95);
   });
-  it("wins cooperatively with four altars, never a single financial winner", () => {
+  it("four seals reopen the bank without ending the game and reward each helper only once", () => {
     let s = awake();
     for (const altar of ALTARS) {
       s = { ...s, players: s.players.map((p) => p.id === "a" ? { ...p, pos: altar } : p) };
-      s = G.purifyAltar(s, "a", altar);
+      s = G.purifyAltar({ ...s, rollId: s.rollId + 1 }, "a", altar);
     }
-    expect(s.phase).toBe("over");
+    expect(s.phase).toBe("playing");
     expect(s.curse?.stage).toBe("escaped");
     expect(s.winner).toBeNull();
-    expect(bal(s, "a")).toBe(700);
+    expect(bal(s, "a")).toBe(950);
+    expect(bal(s, "b")).toBe(1500);
+    expect(G.startBonus(s)).toBe(200);
+    expect(G.horrorTick(s, 999999)).toBe(s);
+    expect(G.purifyAltar(s, "a", 45)).toBe(s);
+    expect(G.roll(s, G.current(s).id, 1, 2).rollId).toBe(s.rollId + 1);
   });
-  it("loses when all eight districts disappear", () => {
+  it("deadline applies penalties and continues instead of ending the game", () => {
     let s = awake();
     for (let i = 1; i <= 8; i++) s = G.horrorTick(s, 1000 + i * FOG_MS);
-    expect(s.curse?.fogGroups).toHaveLength(8);
+    expect(s.curse?.penaltyRate).toBeCloseTo(0.6);
+    expect(bal(s, "a")).toBe(600);
     expect(s.curse?.stage).toBe("forgotten");
-    expect(s.phase).toBe("over");
+    expect(s.phase).toBe("playing");
   });
-  it("loses if everyone has zero sanity and skips lost players otherwise", () => {
+  it("zero group sanity resolves the crisis without ending the game; lost players are skipped", () => {
     const s = awake();
     if (!s.curse) throw new Error("Missing curse");
     const low = { ...s, curse: { ...s.curse, sanity: { a: 5, b: 0 } }, players: s.players.map((p) => ({ ...p, pos: 3 })) };
@@ -146,8 +153,8 @@ describe("Cidade dos Esquecidos", () => {
       const s = { ...playing(city), round: 12 };
       expect(G.horrorTick(s, 1000)).toBe(s);
       expect(G.startBonus(s)).toBe(200);
-      expect(notesFor(city).some((n) => /maldição|Fuga cooperativa/.test(n))).toBe(false);
+      expect(notesFor(city).some((n) => /maldição|Fantasma errante/.test(n))).toBe(false);
     }
-    expect(notesFor("esquecidos").some((n) => /Fuga cooperativa/.test(n))).toBe(true);
+    expect(notesFor("esquecidos").some((n) => /ritual não termina/.test(n))).toBe(true);
   });
 });

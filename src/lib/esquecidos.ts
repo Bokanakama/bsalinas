@@ -3,11 +3,31 @@ import { BORO_BOARD } from "./boro";
 
 export const ALTARS = [0, 17, 28, 45] as const;
 export const FOG_MS = 90_000;
+export const CRISIS_MS = 8 * FOG_MS;
+export const SEAL_REWARD = 250;
+export const PENALTY_PER_SEAL = 15;
+export const SHIFT_MIN_MS = 45_000;
+export const SHIFT_MAX_MS = 90_000;
+export const GHOST_MIN_MS = 15_000;
+export const GHOST_MAX_MS = 30_000;
+export const GHOST_TRIBUTE = 50;
 export const CURSE_ROUND = 8;
 export const RITUAL_COST = 200;
 export const CURSE_MESSAGE = "Vocês não foram escolhidos para comprar esta cidade. Foram escolhidos para permanecer nela.";
 export interface Curse {
   stage: "awake" | "escaped" | "forgotten";
+  /** Missing version denotes the original terminal ritual. */
+  version?: 2;
+  deadline?: number;
+  resolvedAt?: number;
+  penaltyRate?: number;
+  lastSealRollId?: number;
+  layout?: number[];
+  nextShiftAt?: number;
+  shifts?: number;
+  lastShift?: [number, number];
+  ghost?: number;
+  nextGhostAt?: number;
   awakenedAt: number;
   nextFogAt: number;
   fogGroups: number[];

@@ -323,3 +323,12 @@
 .esquecidos-game.curse-awake { --background: oklch(0.12 0.01 170); --card: oklch(0.2 0.013 170); }
 @keyframes curse-dim { from { opacity: .5; } to { opacity: 1; } }
 .curse-awake .filigrana { animation: curse-dim 1.4s ease-out; }
+
+/* Low-density drifting mist never intercepts board controls or obscures the center. */
+.esquecidos-game .horror-fog { position: absolute; inset: 0; z-index: 21; pointer-events: none; overflow: hidden; border-radius: inherit; }
+.esquecidos-game .horror-fog::before, .esquecidos-game .horror-fog::after { content: ""; position: absolute; inset: -20%; opacity: .22; background: repeating-linear-gradient(168deg, transparent 0 8%, color-mix(in oklab, var(--muted-foreground) 65%, transparent) 11%, transparent 17% 28%); filter: blur(14px); animation: fog-drift 24s ease-in-out infinite alternate; }
+.esquecidos-game .horror-fog::after { animation-delay: -12s; animation-direction: alternate-reverse; opacity: .15; }
+.esquecidos-game .ritual-target { outline: 3px solid var(--secondary); outline-offset: -3px; animation: glow 1.8s ease-in-out infinite; z-index: 22; }
+.esquecidos-game .ghost-token { opacity: .8; animation: ghost-hover 2s ease-in-out infinite; filter: drop-shadow(0 0 4px var(--primary)); }
+@keyframes fog-drift { from { transform: translate(-6%, 3%); } to { transform: translate(6%, -3%); } }
+@keyframes ghost-hover { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-16%); } }

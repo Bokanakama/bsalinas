@@ -72,6 +72,7 @@ function Master() {
       case "horrorTick": { const next = G.horrorTick(s, Date.now(), Math.random()); if (next === s) return; s = next; break; }
       case "purifyAltar": { const h = p as { square?: number; sacrifice?: number }; s = G.purifyAltar(s, a.player_id, Number(h.square), h.sacrifice); break; }
       case "useTorch": s = G.useTorch(s, a.player_id, String(p.to ?? a.player_id)); break;
+      case "repelGhost": s = G.repelGhost(s, a.player_id); break;
       case "travelAltar": s = G.travelAltar(s, a.player_id); break;
       case "repayLoan": s = G.repayLoan(s, a.player_id, Number(p.amount)); break;
       case "mortgage": s = G.mortgage(s, a.player_id, Number((p as { square?: number }).square)); break;
@@ -144,7 +145,8 @@ function Master() {
       if (!alive) return;
       const data = await accessRoom(code, "read", {}, true) as { state: G.GameState } | null;
       if (!data) return setMissing(true);
-      let s = data.state;
+      let s = G.resumeLegacyHorror(data.state, Date.now());
+      if (s !== data.state) commit(s);
       if (s.cityEvent?.kind === "padroeira" && s.cityEvent.expiresAt === undefined) {
         s = { ...s, cityEvent: G.activeCityEvent(s) ? { ...s.cityEvent, expiresAt: Date.now() + G.CITY_EVENT_MS } : null };
         commit(s);
@@ -325,14 +327,7 @@ function Master() {
   const winner = state.players.find((p) => p.id === state.winner);
   const ranking = [...state.players].sort((a, b) => G.netWorth(state, b.id) - G.netWorth(state, a.id));
   const center =
-    state.phase === "over" && state.curse ? (
-      <>
-        <p className="text-[10cqw]">{state.curse.stage === "escaped" ? "🕯️" : "🌫️"}</p>
-        <h1 className="font-display text-[7cqw] leading-tight text-secondary">{state.curse.stage === "escaped" ? "Todos escaparam!" : "A cidade venceu"}</h1>
-        <p className="max-w-full text-[3.6cqw]">{state.curse.stage === "escaped" ? "Vocês quebraram os quatro selos. Ninguém foi esquecido." : "A névoa guardou seus nomes. Uma nova partida pode mudar o destino."}</p>
-        <Button asChild className="mt-3 h-auto whitespace-normal text-[3cqw]"><Link to="/esquecidos">Voltar aos Esquecidos</Link></Button>
-      </>
-    ) : state.phase === "over" ? (
+    state.phase === "over" ? (
       <>
         <p className="font-display text-[5.4cqw] uppercase text-muted-foreground">Fim de jogo</p>
         <Animal id={winner?.animal} className="animate-bob h-[39.6cqw] w-auto" />

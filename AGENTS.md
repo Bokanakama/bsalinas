@@ -42,4 +42,4 @@ use the editor.
 - Selva-only mechanics (Onça beast, relic victory) are pure functions in game.ts gated by cityOf(s) === "selva"; other cities never receive beast/relics state.
 - Auction bank financing (Player.loan) and voluntary repayment are pure functions in game.ts; repayment is a 'repayLoan' action processed by the master.
 
-- Esquecidos is a cooperative, city-gated finale in game.ts; master queue ticks persist fog deadlines and ritual order, with no hidden roles in participant-visible state — prevents cross-city changes and secret leakage.
+- Esquecidos is a city-gated mid-game crisis in game.ts, never a terminal ritual; master queue ticks persist randomized fog/ghost/shift deadlines, ritual cooldowns and property permutations with attached assets, with no hidden roles in participant-visible state — prevents cross-city changes and secret leakage.

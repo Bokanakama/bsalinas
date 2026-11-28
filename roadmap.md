@@ -49,3 +49,9 @@
 - [x] Criar mapa separado, capa e entrada pelo portal, preservando a geometria da TV.
 - [x] Integrar despertar da maldição, banco fechado, névoa, sanidade, tochas e ritual cooperativo.
 - [x] Adicionar regras visuais, narração e novidades exclusivas; verificar fuga em sala real com dois celulares e isolamento dos mapas por testes.
+
+## Esquecidos: crise com continuidade
+
+- [x] Reabrir banco após ritual, penalidades proporcionais e compatibilidade com partidas antigas.
+- [x] Selos guiados, névoa, distorções aleatórias e fantasma com estado compartilhado.
+- [x] Testar continuidade, penalidades, sincronização TV/celulares e isolamento dos mapas.

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-export const UPDATE_VERSION = "2026-11-reacoes";
+export const UPDATE_VERSION = "2026-11-28-crise";
 const NOTES = [
   "🦆 6 bichinhos novos: Tucano, Arara Azul, Macaquinho, Boto, Bicho-Preguiça e Pato.",
   "😂 Reações: toque num emoji e ele aparece flutuando na TV.",
@@ -15,7 +15,9 @@ const NOTES = [
 const CITY_NOTES: Partial<Record<string, string[]>> = {
   esquecidos: [
     "🕯️ Cidade dos Esquecidos: a maldição desperta na 8ª rodada ou quando metade dos imóveis tiver dono.",
-    "🌫️ Fuga cooperativa: protejam a sanidade, compartilhem tochas e acendam os quatro altares antes que a névoa engula os 8 bairros.",
+    "🕯️ O ritual não termina mais a partida: banco reabre após a crise. Quebrem um selo por jogada dos dados, seguindo a missão no celular.",
+    "🌫️ Falhar custa 15% do saldo por selo faltante (até 60%). Imóveis na névoa ficam sem aluguel; conter a maldição salva os imóveis.",
+    "👻 Fantasma errante e imóveis que mudam de lugar durante a crise; donos e construções acompanham seus imóveis.",
   ],
   selva: [
     "🐆 Rugido da Onça na TV quando ela anda pelo tabuleiro.",
