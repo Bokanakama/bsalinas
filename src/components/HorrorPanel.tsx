@@ -8,7 +8,7 @@ export function HorrorRules() {
   return <div className="grid gap-5 sm:grid-cols-2">
     {[
       ["01 · A cidade negocia", "Compre, receba aluguéis e negocie Borós normalmente. Na 8ª rodada completa, ou quando metade dos imóveis tiver dono, a maldição desperta."],
-      ["02 · O banco fecha", "Compras, empréstimos, obras e aluguéis param. Negociações entre jogadores continuam. Há 12 minutos para conter a crise. A cada 90 segundos, um bairro fica na névoa, mas seus imóveis continuam seus. Imóveis trocam de lugar entre 45 e 90 segundos; donos e obras vão junto. Um fantasma anda a cada 15–30 segundos: cobra até B$ 50 e tira 10 de sanidade ao atravessar alguém."],
+      ["02 · O banco fecha", "Compras, empréstimos, obras e aluguéis param. Negociações entre jogadores continuam. Há 12 minutos para conter a crise. A cada 90 segundos, um bairro fica na névoa, mas seus imóveis continuam seus. Depois que todos os jogadores ativos passam pelo Início, dois imóveis trocam de lugar; donos e obras vão junto. Na próxima volta de todos, esse par retorna e outro par se move. Isso continua após o ritual. Um fantasma anda a cada 15–30 segundos: cobra até B$ 50 e tira 10 de sanidade ao atravessar alguém."],
       ["03 · Proteja os nomes", "Todos começam com 100 de sanidade e 2 tochas. Casas comuns tiram 5; a névoa tira 20. Altares recuperam 15. Cartas podem recuperar 10 e dar uma tocha, ou tirar 10. Uma tocha recupera 30 para você ou um aliado, inclusive perdido nas sombras."],
       ["04 · Quebre os quatro selos", "O diário revela o próximo altar: a ordem muda entre partidas. Chegue até 6 casas dele e ofereça B$ 200 ou um imóvel seu. Na sua vez, uma tocha leva diretamente ao altar. Cada selo recupera 20 de sanidade. O grupo pode quebrar um selo por jogada dos dados: depois de acender, joguem para liberar o próximo. Quatro selos reabrem o banco, salvam os aluguéis e dão B$ 250 a cada participante do ritual, uma vez. A partida NÃO termina. Se o prazo acabar, os 8 bairros forem cobertos ou todos perderem a sanidade, o banco reabre: perda de 15% do saldo por selo faltante (até 60%) e imóveis na névoa ficam sem aluguel. A vitória continua sendo por falência dos adversários."],
     ].map(([title, text]) => <article key={title} className="border-l-2 border-primary pl-4"><h3 className="mb-2 font-display text-lg text-secondary">{title}</h3><p className="text-sm leading-relaxed text-muted-foreground">{text}</p></article>)}
@@ -25,7 +25,7 @@ export function HorrorPanel({ state, playerId, act }: { state: G.GameState; play
   const [sacrifice, setSacrifice] = useState("");
   const c = state.curse;
   useEffect(() => { if (c?.stage !== "awake") return; setNow(Date.now()); const timer = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(timer); }, [c?.stage]);
-  if (G.cityOf(state) !== "esquecidos" || !c) return null;
+  if (!G.horrorActive(state) || !c) return null;
   const target = G.ritualTarget(state);
   const me = state.players.find((p) => p.id === playerId);
   const active = G.horrorActive(state);

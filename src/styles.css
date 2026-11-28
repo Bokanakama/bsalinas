@@ -295,9 +295,9 @@
 /* New horror map only: the shared TV geometry remains unchanged. */
 .esquecidos-game {
   color: var(--foreground);
-  --background: oklch(0.19 0.014 170);
+  --background: oklch(0.15 0.009 240);
   --foreground: oklch(0.94 0.012 95);
-  --card: oklch(0.25 0.018 170);
+  --card: oklch(0.25 0.012 240);
   --card-foreground: var(--foreground);
   --primary: oklch(0.64 0.105 160);
   --primary-foreground: oklch(0.16 0.02 170);
@@ -306,15 +306,27 @@
   --accent: oklch(0.64 0.14 30);
   --accent-foreground: var(--foreground);
   --muted: oklch(0.31 0.015 170);
-  --muted-foreground: oklch(0.74 0.016 110);
-  --border: oklch(0.42 0.025 160);
+  --muted-foreground: oklch(0.82 0.012 110);
+  --border: oklch(0.53 0.018 240);
   --input: var(--border);
   --ring: var(--secondary);
   --success: oklch(0.7 0.11 155);
   --success-foreground: var(--background);
   --destructive: oklch(0.7 0.15 25);
   --destructive-foreground: var(--background);
-  --board-gap: oklch(0.15 0.015 170);
+  --board-gap: oklch(0.1 0.008 240);
+  --tile-highlight: oklch(0.98 0.005 95 / .13);
+  --tile-shadow: oklch(0.04 0.004 240 / .75);
+  --group-0: oklch(0.58 0.08 55);
+  --group-1: oklch(0.65 0.15 35);
+  --group-2: oklch(0.65 0.13 145);
+  --group-3: oklch(0.7 0.11 200);
+  --group-4: oklch(0.83 0.14 90);
+  --group-5: oklch(0.65 0.17 340);
+  --group-6: oklch(0.6 0.13 265);
+  --group-7: oklch(0.73 0.13 65);
+  --group-8: oklch(0.48 0.025 240);
+  --group-9: oklch(0.65 0.07 175);
 }
 .esquecidos-game.azulejo, .esquecidos-game .filigrana { background-image: none; }
 .esquecidos-game .cedula { background-image: none; background-color: var(--card); }
@@ -332,3 +344,30 @@
 .esquecidos-game .ghost-token { opacity: .8; animation: ghost-hover 2s ease-in-out infinite; filter: drop-shadow(0 0 4px var(--primary)); }
 @keyframes fog-drift { from { transform: translate(-6%, 3%); } to { transform: translate(6%, -3%); } }
 @keyframes ghost-hover { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-16%); } }
+
+/* Raised surfaces and numbered player pins, scoped to the horror city. */
+.esquecidos-game .horror-tile {
+  border: 1px solid color-mix(in oklab, var(--border) 65%, transparent);
+  box-shadow: inset 0 1px 0 var(--tile-highlight), inset 0 -2px 0 var(--tile-shadow), 0 3px 5px var(--tile-shadow);
+  background-image: linear-gradient(160deg, var(--tile-highlight), transparent 40%);
+}
+.esquecidos-game .horror-tile > span.bg-card\/80 { background: var(--card); color: var(--foreground); }
+.esquecidos-game .horror-tile .bg-card\/90 { background: var(--background); color: var(--foreground); }
+.esquecidos-game .player-pin {
+  position: relative; display: inline-flex; align-items: center; justify-content: center;
+  min-width: 2.6cqw; height: 2.6cqw; flex-shrink: 0; border-radius: 50% 50% 45% 45%;
+  background: var(--background); border: .18cqw solid color-mix(in oklab, var(--player-color) 80%, var(--foreground));
+  box-shadow: 0 2px 4px var(--tile-shadow), 0 0 .4cqw color-mix(in oklab, var(--player-color) 55%, transparent);
+}
+.esquecidos-game .player-pin-active { border-width: .25cqw; transform: translateY(-.25cqw); }
+.esquecidos-game .player-pin-number { position: absolute; right: -.3cqw; bottom: -.25cqw; min-width: 1cqw; border-radius: 50%; background: var(--foreground); color: var(--background); font-size: .7cqw; line-height: 1cqw; text-align: center; font-weight: 800; }
+.esquecidos-game .player-summary { border-left: 4px solid color-mix(in oklab, var(--player-color) 80%, var(--foreground)); }
+.esquecidos-game .player-summary .player-name { color: color-mix(in oklab, var(--player-color) 65%, var(--foreground)) !important; }
+.esquecidos-game .property-flight { position: absolute; margin: 0; z-index: 35; pointer-events: none; box-shadow: 0 10px 24px var(--tile-shadow), 0 0 12px var(--primary); border: 2px solid var(--secondary); }
+
+.esquecidos-game .street-strip { background: var(--board-gap); }
+.esquecidos-game .street-pin { min-width: 24px; height: auto; min-height: 24px; border-width: 2px; box-shadow: 0 2px 4px var(--tile-shadow); }
+.esquecidos-game .street-pin .player-pin-number { right: -3px; bottom: -3px; min-width: 12px; font-size: 9px; line-height: 12px; }
+.esquecidos-game .wallet-heading { border-radius: 8px; box-shadow: var(--shadow-soft); }
+.esquecidos-game .wallet-heading > img { height: 76px; right: 6px; bottom: 6px; opacity: .9; }
+.esquecidos-game .wallet-heading > p:last-of-type { max-width: calc(100% - 72px); }

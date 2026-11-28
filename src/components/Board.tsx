@@ -1,6 +1,8 @@
 import { boardFor, buildingName, cityOf, groupTag, HOUSE_MULT, housesAt, isMortgaged, money, ownsGroup, rentFor, startBonus, horrorActive, ritualTarget, type GameState } from "@/lib/game";
 import { useState, type ReactNode } from "react";
 import { Animal } from "./Animal";
+import { usePropertyFlights } from "./usePropertyFlights";
+import type { CSSProperties } from "react";
 
 // 56 squares on the perimeter of an 18x12 grid (16:9 friendly), clockwise from bottom-right.
 const C = 18;
@@ -96,9 +98,11 @@ function Row({ k, v, strong }: { k: string; v: string; strong?: boolean }) {
 export function Board({ state, center, side, displayPos, focus }: { state: GameState; center: ReactNode; side?: ReactNode; displayPos: Record<string, number>; focus: number | null }) {
   const [picked, setPicked] = useState<number | null>(null);
   
+  const horror = cityOf(state) === "esquecidos";
+  const boardRef = usePropertyFlights(state.curse?.layout?.join(",") ?? "original", horror);
   const turnId = state.players[state.turn]?.id;
   return (
-    <div style={{ width: "min(100cqw, calc(100cqh * 16 / 9))", height: "min(100cqh, calc(100cqw * 3 / 4))", containerType: "size" }} className="relative overflow-hidden rounded-[1.6cqw] border border-border/20 bg-[var(--board-gap)] shadow-[var(--shadow-soft)]">
+    <div ref={boardRef} style={{ width: "min(100cqw, calc(100cqh * 16 / 9))", height: "min(100cqh, calc(100cqw * 3 / 4))", containerType: "size" }} className="relative overflow-hidden rounded-[1.6cqw] border border-border/20 bg-[var(--board-gap)] shadow-[var(--shadow-soft)]">
       <div
         className="grid size-full gap-[0.35cqw] p-[0.6cqw] transition-transform duration-500 ease-out"
         style={{ gridTemplateColumns: CF.map((v) => `${v}fr`).join(" "), gridTemplateRows: RF.map((v) => `${v}fr`).join(" ") }}
@@ -116,15 +120,15 @@ export function Board({ state, center, side, displayPos, focus }: { state: GameS
           const horiz = side === "left" || side === "right";
           const relicHolder = sq.relic !== undefined ? state.players.find((p) => p.id === state.relics?.[sq.relic!]) : undefined;
           const tokens = (
-            <div className="pointer-events-none absolute inset-x-0 top-[1%] z-20 flex justify-center gap-[0.1cqw]">
+            <div data-player-tokens className="pointer-events-none absolute inset-x-0 top-[1%] z-20 flex justify-center gap-[0.1cqw]">
               {state.beast === i && <span role="img" aria-label="Onça" className="animate-hop text-[2.2cqw] leading-none drop-shadow">🐆</span>}
               {sq.relic !== undefined && <span role="img" aria-label={relicHolder ? `Relíquia com ${relicHolder.name}` : "Relíquia livre"} className="text-[1.8cqw] leading-none" style={relicHolder ? { filter: `drop-shadow(0 0 0.3cqw ${relicHolder.color})` } : undefined}>💎</span>}
               {horrorActive(state) && state.curse?.ghost === i && <span role="img" aria-label="Fantasma errante" className="ghost-token text-[2.2cqw] leading-none">👻</span>}
-              {here.map((p) => <Animal key={`${p.id}-${displayPos[p.id] ?? p.pos}`} id={p.animal} badge alt={p.name} className={`animate-hop h-[2.4cqw] w-auto rounded-full ring-1 ring-foreground/40 drop-shadow-[0_2px_2px_color-mix(in_oklab,var(--foreground)_35%,transparent)] ${p.id === turnId ? "scale-110" : "opacity-90"}`} />)}
+              {here.map((p) => horror ? <span key={`${p.id}-${displayPos[p.id] ?? p.pos}`} title={p.name} className={`player-pin ${p.id === turnId ? "player-pin-active" : ""}`} style={{ "--player-color": p.color } as CSSProperties}><Animal id={p.animal} badge alt={p.name} className="h-[2.3cqw] w-auto" /><span className="player-pin-number">{state.players.indexOf(p) + 1}</span></span> : <Animal key={`${p.id}-${displayPos[p.id] ?? p.pos}`} id={p.animal} badge alt={p.name} className={`animate-hop h-[2.4cqw] w-auto rounded-full ring-1 ring-foreground/40 drop-shadow-[0_2px_2px_color-mix(in_oklab,var(--foreground)_35%,transparent)] ${p.id === turnId ? "scale-110" : "opacity-90"}`} />)}
             </div>
           );
           const ring = focus === i ? "animate-glow z-20 ring-4 ring-secondary ring-offset-2 ring-offset-background" : full ? "monopoly-glow z-10" : "";
-          const base = `${horrorActive(state) && ritualTarget(state) === i ? "ritual-target" : ""} ${consumed ? "fog-consumed" : ""} relative overflow-hidden text-left shadow-[0_1px_0_color-mix(in_oklab,var(--foreground)_10%,transparent)] transition-[transform,box-shadow] duration-200 hover:z-20 hover:-translate-y-[0.15cqw] ${ring}`;
+          const base = `${horror ? "horror-tile" : ""} ${horrorActive(state) && ritualTarget(state) === i ? "ritual-target" : ""} ${consumed ? "fog-consumed" : ""} relative overflow-hidden text-left shadow-[0_1px_0_color-mix(in_oklab,var(--foreground)_10%,transparent)] transition-[transform,box-shadow] duration-200 hover:z-20 hover:-translate-y-[0.15cqw] ${ring}`;
 
           if (CORNER[i]) {
             const k = CORNER[i]!;
@@ -147,7 +151,7 @@ export function Board({ state, center, side, displayPos, focus }: { state: GameS
           ) : null;
 
           return (
-            <button type="button" onClick={() => setPicked(i)} key={i} style={{ gridRow: r, gridColumn: c }} className={`${base} flex rounded-[0.5cqw] bg-card text-card-foreground ${horiz ? (side === "left" ? "flex-row-reverse" : "flex-row") : "flex-col"} ${mort ? "grayscale-[60%]" : ""}`}>
+            <button data-property-id={prop ? (state.curse?.layout?.[i] ?? i) : undefined} type="button" onClick={() => setPicked(i)} key={i} style={{ gridRow: r, gridColumn: c }} className={`${base} flex rounded-[0.5cqw] bg-card text-card-foreground ${horiz ? (side === "left" ? "flex-row-reverse" : "flex-row") : "flex-col"} ${mort ? "grayscale-[60%]" : ""}`}>
               {band}
               <div className={`flex min-w-0 flex-1 flex-col items-center justify-between text-center ${horiz ? "px-[0.4cqw] py-[0.2cqw] justify-center gap-[0.2cqw]" : "px-[0.2cqw] pb-[0.2cqw] pt-[0.6cqw]"}`}>
                 {!prop && !horiz && <Icon name={KIND_ICON[sq.kind] ?? "luck"} className={`size-[1.6cqw] shrink-0 ${KIND_TONE[sq.kind] ?? ""}`} />}

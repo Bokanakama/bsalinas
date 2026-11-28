@@ -1,4 +1,7 @@
 import curseVoice from "@/assets/esquecidos-despertar.asset.json";
+import padroeiraVoice from "@/assets/esquecidos-padroeira.asset.json";
+import feriadoVoice from "@/assets/esquecidos-feriado.asset.json";
+import temporalVoice from "@/assets/esquecidos-temporal.asset.json";
 let ctx: AudioContext | null = null;
 function ac() {
   if (typeof window === "undefined") return null;
@@ -57,13 +60,14 @@ export const music = {
 };
 
 // Narração com áudios gravados (funciona em navegadores de TV sem voz do sistema).
-export type VoiceClip = "sorte" | "reves" | "dupla1" | "dupla2" | "tres_duplas" | "saia_livre" | "feriado" | "temporal" | "padroeira" | "fim" | "boro_feriado" | "boro_temporal" | "boro_padroeira" | "selva_feriado" | "selva_temporal" | "selva_padroeira" | "leilao" | "esquecidos_despertar";
+export type VoiceClip = "sorte" | "reves" | "dupla1" | "dupla2" | "tres_duplas" | "saia_livre" | "feriado" | "temporal" | "padroeira" | "fim" | "boro_feriado" | "boro_temporal" | "boro_padroeira" | "selva_feriado" | "selva_temporal" | "selva_padroeira" | "leilao" | "esquecidos_despertar" | "esquecidos_padroeira" | "esquecidos_feriado" | "esquecidos_temporal";
 let current: HTMLAudioElement | null = null;
 export const voice = {
   play(clip: VoiceClip) {
     if (typeof window === "undefined") return;
     current?.pause();
-    current = new Audio(clip === "esquecidos_despertar" ? curseVoice.url : `/audio/${clip}.mp3`);
+    const urls: Partial<Record<VoiceClip, string>> = { esquecidos_despertar: curseVoice.url, esquecidos_padroeira: padroeiraVoice.url, esquecidos_feriado: feriadoVoice.url, esquecidos_temporal: temporalVoice.url };
+    current = new Audio(urls[clip] ?? `/audio/${clip}.mp3`);
     current.volume = 0.8;
     void current.play().catch(() => {});
   },

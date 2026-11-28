@@ -294,15 +294,23 @@ function Master() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trId]);
 
+  // News has its own trigger: later game events must not swallow the announcement.
+  const newsKey = state?.cityEvent ? `${state.cityEvent.kind}-${state.cityEvent.expiresAt ?? state.cityEvent.until}` : "";
+  useEffect(() => {
+    if (!state?.cityEvent || G.horrorActive(state) || !G.activeCityEvent(state) || !voiceRef.current) return;
+    const clip = G.cityOf(state) === "salinas" ? state.cityEvent.kind : `${G.cityOf(state)}_${state.cityEvent.kind}`;
+    voice.play(clip as VoiceClip);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [newsKey]);
+
   const evId = state?.event?.id;
   useEffect(() => {
     if (!state?.event) return;
     if (state.event.tone === "good") sfx.coin(); else if (state.event.tone === "bad") sfx.bad();
     // Narração sutil: só notícias da cidade, Sorte/Revés e o vencedor.
     const t = paymentText(state.event.text);
-    const clip: VoiceClip | null = state.curse ? null : state.phase === "over" ? "fim"
+    const clip: VoiceClip | null = G.horrorActive(state) ? null : state.phase === "over" ? "fim"
       : t.includes("ganhou o cartão Saia Livre") ? "saia_livre"
-      : G.cityOf(state) !== "esquecidos" && state.cityEvent && t.includes(state.cityEvent.text) ? (G.cityOf(state) === "salinas" ? state.cityEvent.kind : `${G.cityOf(state) as "boro" | "selva"}_${state.cityEvent.kind}` as VoiceClip)
       : state.card && t.includes(state.card.text) ? (state.card.good ? "sorte" : "reves")
       : null;
     if (voiceOn && clip) voice.play(clip);
@@ -443,10 +451,10 @@ function Master() {
           const props = Object.entries(state.owners).filter(([, o]) => o === p.id);
           const active = state.phase === "playing" && i === state.turn;
           return (
-            <button type="button" key={p.id} onClick={() => !p.out && setHostFor(p.id)} aria-label={`Opções de ${p.name}`} className={`flex items-center text-left ${p.out ? "opacity-40 grayscale" : ""} gap-2 rounded-xl bg-card p-[0.7vh] shadow-[var(--shadow-soft)] transition ${active ? "ring-4 ring-secondary" : ""}`}>
+            <button type="button" key={p.id} onClick={() => !p.out && setHostFor(p.id)} aria-label={`Opções de ${p.name}`} style={{ "--player-color": p.color } as React.CSSProperties} className={`player-summary flex items-center text-left ${p.out ? "opacity-40 grayscale" : ""} gap-2 rounded-xl bg-card p-[0.7vh] shadow-[var(--shadow-soft)] transition ${active ? "ring-4 ring-secondary" : ""}`}>
               <Animal id={p.animal} className={`h-[clamp(28px,6.5vh,80px)] w-auto ${active ? "animate-bob" : ""}`} />
               <div className="min-w-0 flex-1">
-                <p className="truncate font-display text-[clamp(11px,2.1vh,22px)]" style={{ color: p.color }}>{p.name}{p.jail ? " 👮" : ""}{p.freeJail ? " 🎫" : ""}{p.out ? " · faliu" : ""}</p>
+                <p className="player-name truncate font-display text-[clamp(11px,2.1vh,22px)]" style={{ color: p.color }}>{p.name}{p.jail ? " 👮" : ""}{p.freeJail ? " 🎫" : ""}{p.out ? " · faliu" : ""}</p>
                 <p className={`font-display text-[clamp(12px,2.6vh,30px)] leading-none ${p.balance < 0 ? "text-destructive" : ""}`}>{G.money(p.balance)}</p>
                 {!p.out && state.phase !== "lobby" && <p className="truncate text-[clamp(9px,1.4vh,15px)] text-muted-foreground">Patrimônio {G.money(G.netWorth(state, p.id))}</p>}
                 <div className="mt-0.5 flex flex-wrap gap-0.5">

@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode, type CSSProperties } from "react";
 import { getPlayerId, sendAction, setPlayerId, useRoomState } from "@/lib/room";
 import * as G from "@/lib/game";
 import { DicePair } from "@/components/Dice";
@@ -153,12 +153,12 @@ function Wallet() {
         </button>
       )}
       {G.cityOf(state) === "selva" && <><SelvaIntro /><div className="flex justify-end"><SelvaRulesButton className="border-border bg-card" /></div></>}
-      <header className="cedula relative overflow-hidden rounded-2xl border-4 border-border p-4 shadow-[6px_6px_0_var(--foreground)]">
+      <header style={{ "--player-color": me.color } as CSSProperties} className="wallet-heading player-summary cedula relative overflow-hidden rounded-2xl border-4 border-border p-4 shadow-[6px_6px_0_var(--foreground)]">
         <div className="flex items-center justify-between text-xs font-bold uppercase tracking-widest text-muted-foreground">
           <span>Banco de {G.cityName(state)} · Sala {code}</span>
           <span>{G.ANIMALS.find((a) => a.id === me.animal)?.name}</span>
         </div>
-        <p className="font-display text-2xl" style={{ color: me.color }}>{me.name}</p>
+        <p className="player-name font-display text-2xl" style={{ color: me.color }}>{me.name}</p>
         <p className="text-xs uppercase text-muted-foreground">Saldo</p>
         <p key={me.balance} className={`animate-pop font-display text-5xl ${me.balance < 0 ? "text-destructive" : "text-foreground"}`}>{G.money(me.balance)}</p>
         <p className="text-sm">📍 {G.boardFor(state)[me.pos]!.name}{me.freeJail ? ` · 🎫 Saia Livre ×${me.freeJail}` : ""}</p>
@@ -191,11 +191,11 @@ function Wallet() {
         </Card>
       ) : (
         <Card highlight={myTurn}>
-          <div className="flex items-center justify-center gap-2">
+          <div style={{ "--player-color": cur?.color } as CSSProperties} className="player-summary flex items-center justify-center gap-2">
             <Animal id={cur?.animal} className="h-14 w-auto" />
             <div className="text-left">
               <p className="text-xs uppercase text-muted-foreground">Vez de</p>
-              <p className="font-display text-3xl leading-none" style={{ color: cur?.color }}>{myTurn ? "Você!" : cur?.name}</p>
+              <p className="player-name font-display text-3xl leading-none" style={{ color: cur?.color }}>{myTurn ? "Você!" : cur?.name}</p>
             </div>
           </div>
           <div className="my-3 flex justify-center"><DicePair dice={state.dice} rollId={state.rollId} size={68} /></div>

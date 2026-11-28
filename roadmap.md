@@ -55,3 +55,8 @@
 - [x] Reabrir banco após ritual, penalidades proporcionais e compatibilidade com partidas antigas.
 - [x] Selos guiados, névoa, distorções aleatórias e fantasma com estado compartilhado.
 - [x] Testar continuidade, penalidades, sincronização TV/celulares e isolamento dos mapas.
+
+## Esquecidos: visual e distorções por voltas
+- [x] Melhorar contraste e distinguir personagens sem mudar a geometria.
+- [x] Ocultar missão concluída e trocar pares após todos passarem no Início, com retorno animado.
+- [x] Narrar Gazeta de B$400 e verificar regras e partida (120 testes; TV e celular; reprodução de áudio confirmada).

@@ -360,7 +360,7 @@ export function roll(s: GameState, id: string, d1: number, d2: number, seenRollI
   if (horrorActive(s)) {
     const p = current(s);
     if (!p || (s.curse?.sanity[id] ?? 0) <= 0) return s;
-    return { ...patch(s, id, { pos: (p.pos + d1 + d2) % boardFor(s).length, jail: 0, doubles: 0 }), card: null, dice: [d1, d2], rollId: s.rollId + 1, moving: true };
+    return { ...patch(s, id, { pos: (p.pos + d1 + d2) % boardFor(s).length, laps: (p.laps ?? 0) + (p.pos + d1 + d2 >= boardFor(s).length ? 1 : 0), jail: 0, doubles: 0 }), card: null, dice: [d1, d2], rollId: s.rollId + 1, moving: true };
   }
   // Stale roll ids were rejected above, before either city's movement rules.
   let p = current(s);
@@ -934,26 +934,30 @@ export function resumeLegacyHorror(s: GameState, now: number): GameState {
 }
 const intervalFrom = (random: number, min: number, max: number) => min + Math.floor(Math.min(1, Math.max(0, random)) * (max - min));
 
-/** Exchange properties, not perimeter cells or players; all attached assets follow the property. */
+/** Exchange one pair per shared lap; the previous permutation is restored first. */
 export function shiftProperties(s: GameState, random: number): GameState {
   const c = s.curse;
-  if (!horrorActive(s) || !c || s.moving || s.pending) return s;
-  const slots = boardFor(s).flatMap((sq, i) => sq.kind === "property" ? [i] : []);
+  if (cityOf(s) !== "esquecidos" || s.phase !== "playing" || !c || s.moving || s.pending) return s;
+  const alive = s.players.filter((p) => !p.out);
+  if (!alive.length) return s;
+  if (!c.shiftLaps) return { ...s, curse: { ...c, shiftLaps: Object.fromEntries(alive.map((p) => [p.id, p.laps ?? 0])) } };
+  if (!alive.every((p) => (p.laps ?? 0) > (c.shiftLaps?.[p.id] ?? p.laps ?? 0))) return s;
+  // Canonicalize legacy accumulated swaps, retaining ownership, works and fog by identity.
+  const oldLayout = boardFor(s).map((sq) => ESQUECIDOS_BOARD.indexOf(sq));
+  const layout = ESQUECIDOS_BOARD.map((_, i) => i);
+  const slots = ESQUECIDOS_BOARD.flatMap((sq, i) => sq.kind === "property" && !c.lastShift?.includes(i) ? [i] : []);
   const offset = Math.min(slots.length - 1, Math.max(0, Math.floor(random * slots.length)));
   const a = slots[offset], b = slots[(offset + Math.max(1, Math.floor(slots.length / 2))) % slots.length];
   if (a === undefined || b === undefined || a === b) return s;
-  const layout = [...(c.layout ?? ESQUECIDOS_BOARD.map((_, i) => i))];
-  const sourceA = layout[a], sourceB = layout[b];
-  if (sourceA === undefined || sourceB === undefined) return s;
-  layout[a] = sourceB; layout[b] = sourceA;
-  function swap<T>(record: Record<string, T> | undefined, a: number, b: number): Record<string, T> {
-    const copy = { ...record }, av = record?.[a], bv = record?.[b];
-    delete copy[a]; delete copy[b];
-    if (bv !== undefined) copy[a] = bv;
-    if (av !== undefined) copy[b] = av;
-    return copy;
+  layout[a] = b; layout[b] = a;
+  const destination = (old: number) => layout.indexOf(oldLayout[old] ?? old);
+  function remap<T>(record: Record<string, T> | undefined): Record<string, T> {
+    return Object.fromEntries(Object.entries(record ?? {}).map(([i, value]) => [destination(Number(i)), value]));
   }
-  return say({ ...s, owners: swap(s.owners, a, b), houses: swap(s.houses, a, b), mortgaged: swap(s.mortgaged, a, b), offer: null, curse: { ...c, layout, shifts: (c.shifts ?? 0) + 1, lastShift: [a, b], consumed: c.consumed.map((i) => i === a ? b : i === b ? a : i) } }, `A cidade se moveu: ${boardFor(s)[a]?.name} e ${boardFor(s)[b]?.name} trocaram de lugar. Donos e construções foram junto.`, "info");
+  const shiftLaps = Object.fromEntries(alive.map((p) => [p.id, (c.shiftLaps?.[p.id] ?? 0) + 1]));
+  return say({ ...s, owners: remap(s.owners), houses: remap(s.houses), mortgaged: remap(s.mortgaged), offer: null,
+    curse: { ...c, layout, shiftLaps, shifts: (c.shifts ?? 0) + 1, lastShift: [a, b], consumed: c.consumed.map(destination) } },
+    `Todos passaram pelo Início! ${c.lastShift ? "Os imóveis anteriores voltaram. " : ""}${ESQUECIDOS_BOARD[a]?.name} e ${ESQUECIDOS_BOARD[b]?.name} trocaram de lugar; donos e obras acompanham.`, "info");
 }
 
 /** Master-only tick: every randomized deadline and result is saved once for every device. */
@@ -966,10 +970,10 @@ export function horrorTick(s: GameState, now: number, random = 0): GameState {
     if ((s.round ?? 0) < CURSE_ROUND && Object.keys(s.owners).length < Math.ceil(properties / 2)) return s;
     const rotate = Math.min(3, Math.max(0, Math.floor(random * 4)));
     const order = [...ALTARS.slice(rotate), ...ALTARS.slice(0, rotate)];
-    const curse: Curse = { version: 2, stage: "awake", awakenedAt: now, deadline: now + CRISIS_MS, nextFogAt: now + FOG_MS, nextShiftAt: now + intervalFrom(random, SHIFT_MIN_MS, SHIFT_MAX_MS), nextGhostAt: now + intervalFrom(random, GHOST_MIN_MS, GHOST_MAX_MS), ghost: 28, fogGroups: [], consumed: [], altars: {}, sanity: Object.fromEntries(s.players.filter((p) => !p.out).map((p) => [p.id, 100])), torches: Object.fromEntries(s.players.filter((p) => !p.out).map((p) => [p.id, 2])), clue: 0, order };
+    const curse: Curse = { version: 2, stage: "awake", awakenedAt: now, deadline: now + CRISIS_MS, nextFogAt: now + FOG_MS, nextShiftAt: now + intervalFrom(random, SHIFT_MIN_MS, SHIFT_MAX_MS), nextGhostAt: now + intervalFrom(random, GHOST_MIN_MS, GHOST_MAX_MS), ghost: 28, shiftLaps: Object.fromEntries(s.players.filter((p) => !p.out).map((p) => [p.id, p.laps ?? 0])), fogGroups: [], consumed: [], altars: {}, sanity: Object.fromEntries(s.players.filter((p) => !p.out).map((p) => [p.id, 100])), torches: Object.fromEntries(s.players.filter((p) => !p.out).map((p) => [p.id, 2])), clue: 0, order };
     return say({ ...s, curse, cityEvent: null, offer: null, card: null, transfer: null, players: s.players.map((p) => ({ ...p, jail: 0, doubles: 0 })) }, CURSE_MESSAGE, "bad");
   }
-  if (!horrorActive(s)) return s;
+  if (!horrorActive(s)) return shiftProperties(s, random);
   if (now >= (s.curse.deadline ?? s.curse.awakenedAt + CRISIS_MS)) return horrorFinish(s, false, now);
   let next = s;
   let c = s.curse;
@@ -983,12 +987,8 @@ export function horrorTick(s: GameState, now: number, random = 0): GameState {
       if (c.fogGroups.length >= 8) return horrorFinish(next, false, now);
     }
   }
-  if (now >= (c.nextShiftAt ?? now + SHIFT_MIN_MS)) {
-    next = shiftProperties(next, random);
-    c = next.curse ?? c;
-    c = { ...c, nextShiftAt: now + intervalFrom(1 - random, SHIFT_MIN_MS, SHIFT_MAX_MS) };
-    next = { ...next, curse: c };
-  }
+  next = shiftProperties(next, random);
+  c = next.curse ?? c;
   if (now >= (c.nextGhostAt ?? now + GHOST_MIN_MS)) {
     const steps = 1 + Math.min(5, Math.max(0, Math.floor(random * 6)));
     const from = c.ghost ?? 28;

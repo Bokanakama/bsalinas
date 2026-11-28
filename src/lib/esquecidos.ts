@@ -25,6 +25,8 @@ export interface Curse {
   layout?: number[];
   nextShiftAt?: number;
   shifts?: number;
+  /** Laps at the last shared crossing; missing means migration baseline. */
+  shiftLaps?: Record<string, number>;
   lastShift?: [number, number];
   ghost?: number;
   nextGhostAt?: number;
