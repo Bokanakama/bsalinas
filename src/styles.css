@@ -290,3 +290,36 @@
   --group-6: oklch(0.5 0.18 30);
   --group-7: oklch(0.62 0.14 85);
 }
+
+
+/* New horror map only: the shared TV geometry remains unchanged. */
+.esquecidos-game {
+  color: var(--foreground);
+  --background: oklch(0.19 0.014 170);
+  --foreground: oklch(0.94 0.012 95);
+  --card: oklch(0.25 0.018 170);
+  --card-foreground: var(--foreground);
+  --primary: oklch(0.64 0.105 160);
+  --primary-foreground: oklch(0.16 0.02 170);
+  --secondary: oklch(0.79 0.13 80);
+  --secondary-foreground: var(--background);
+  --accent: oklch(0.64 0.14 30);
+  --accent-foreground: var(--foreground);
+  --muted: oklch(0.31 0.015 170);
+  --muted-foreground: oklch(0.74 0.016 110);
+  --border: oklch(0.42 0.025 160);
+  --input: var(--border);
+  --ring: var(--secondary);
+  --success: oklch(0.7 0.11 155);
+  --success-foreground: var(--background);
+  --destructive: oklch(0.7 0.15 25);
+  --destructive-foreground: var(--background);
+  --board-gap: oklch(0.15 0.015 170);
+}
+.esquecidos-game.azulejo, .esquecidos-game .filigrana { background-image: none; }
+.esquecidos-game .cedula { background-image: none; background-color: var(--card); }
+.esquecidos-game .fog-consumed { filter: grayscale(1); background-color: var(--muted); border: 1px dashed var(--muted-foreground); }
+.esquecidos-game .fog-consumed::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(135deg, transparent 0 8px, color-mix(in oklab, var(--background) 25%, transparent) 8px 10px); }
+.esquecidos-game.curse-awake { --background: oklch(0.12 0.01 170); --card: oklch(0.2 0.013 170); }
+@keyframes curse-dim { from { opacity: .5; } to { opacity: 1; } }
+.curse-awake .filigrana { animation: curse-dim 1.4s ease-out; }

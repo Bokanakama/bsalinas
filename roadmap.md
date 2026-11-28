@@ -43,3 +43,9 @@
 ## Selva dos Tambores
 
 - [x] Mapa /selva com 56 casas, cartas, notícias, Onça, relíquias e mesma voz.
+
+## Cidade dos Esquecidos
+
+- [x] Criar mapa separado, capa e entrada pelo portal, preservando a geometria da TV.
+- [x] Integrar despertar da maldição, banco fechado, névoa, sanidade, tochas e ritual cooperativo.
+- [x] Adicionar regras visuais, narração e novidades exclusivas; verificar fuga em sala real com dois celulares e isolamento dos mapas por testes.

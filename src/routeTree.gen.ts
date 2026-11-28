@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as BoroRouteImport } from './routes/boro'
+import { Route as EsquecidosRouteImport } from './routes/esquecidos'
 import { Route as SalinasRouteImport } from './routes/salinas'
 import { Route as SelvaRouteImport } from './routes/selva'
 import { Route as JogarCodeRouteImport } from './routes/jogar.$code'
@@ -25,6 +26,11 @@ const IndexRoute = IndexRouteImport.update({
 const BoroRoute = BoroRouteImport.update({
   id: '/boro',
   path: '/boro',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EsquecidosRoute = EsquecidosRouteImport.update({
+  id: '/esquecidos',
+  path: '/esquecidos',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SalinasRoute = SalinasRouteImport.update({
@@ -56,6 +62,7 @@ const ApiPublicCleanupRoute = ApiPublicCleanupRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/boro': typeof BoroRoute
+  '/esquecidos': typeof EsquecidosRoute
   '/salinas': typeof SalinasRoute
   '/selva': typeof SelvaRoute
   '/jogar/$code': typeof JogarCodeRoute
@@ -65,6 +72,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/boro': typeof BoroRoute
+  '/esquecidos': typeof EsquecidosRoute
   '/salinas': typeof SalinasRoute
   '/selva': typeof SelvaRoute
   '/jogar/$code': typeof JogarCodeRoute
@@ -75,6 +83,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/boro': typeof BoroRoute
+  '/esquecidos': typeof EsquecidosRoute
   '/salinas': typeof SalinasRoute
   '/selva': typeof SelvaRoute
   '/jogar/$code': typeof JogarCodeRoute
@@ -86,6 +95,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/boro'
+    | '/esquecidos'
     | '/salinas'
     | '/selva'
     | '/jogar/$code'
@@ -95,6 +105,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/boro'
+    | '/esquecidos'
     | '/salinas'
     | '/selva'
     | '/jogar/$code'
@@ -104,6 +115,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/boro'
+    | '/esquecidos'
     | '/salinas'
     | '/selva'
     | '/jogar/$code'
@@ -114,6 +126,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   BoroRoute: typeof BoroRoute
+  EsquecidosRoute: typeof EsquecidosRoute
   SalinasRoute: typeof SalinasRoute
   SelvaRoute: typeof SelvaRoute
   JogarCodeRoute: typeof JogarCodeRoute
@@ -135,6 +148,13 @@ declare module '@tanstack/react-router' {
       path: '/boro'
       fullPath: '/boro'
       preLoaderRoute: typeof BoroRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/esquecidos': {
+      id: '/esquecidos'
+      path: '/esquecidos'
+      fullPath: '/esquecidos'
+      preLoaderRoute: typeof EsquecidosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/salinas': {
@@ -178,6 +198,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BoroRoute: BoroRoute,
+  EsquecidosRoute: EsquecidosRoute,
   SalinasRoute: SalinasRoute,
   SelvaRoute: SelvaRoute,
   JogarCodeRoute: JogarCodeRoute,

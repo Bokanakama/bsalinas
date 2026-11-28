@@ -1,3 +1,4 @@
+import curseVoice from "@/assets/esquecidos-despertar.asset.json";
 let ctx: AudioContext | null = null;
 function ac() {
   if (typeof window === "undefined") return null;
@@ -21,6 +22,7 @@ function tone(freq: number, dur: number, type: OscillatorType = "square", delay 
 }
 export const sfx = {
   unlock: () => ac(),
+  blackout: () => { tone(55, 1.8, "sine", 0, 0.09); tone(82, 1.2, "triangle", 0.3, 0.04); tone(392, 2, "sine", 0.6, 0.03); },
   dice: () => { for (let i = 0; i < 8; i++) tone(200 + Math.random() * 400, 0.05, "square", i * 0.07, 0.05); },
   step: () => tone(660, 0.06, "triangle"),
   coin: () => { tone(988, 0.1, "square", 0); tone(1319, 0.25, "square", 0.08); },
@@ -55,13 +57,13 @@ export const music = {
 };
 
 // Narração com áudios gravados (funciona em navegadores de TV sem voz do sistema).
-export type VoiceClip = "sorte" | "reves" | "dupla1" | "dupla2" | "tres_duplas" | "saia_livre" | "feriado" | "temporal" | "padroeira" | "fim" | "boro_feriado" | "boro_temporal" | "boro_padroeira" | "selva_feriado" | "selva_temporal" | "selva_padroeira" | "leilao";
+export type VoiceClip = "sorte" | "reves" | "dupla1" | "dupla2" | "tres_duplas" | "saia_livre" | "feriado" | "temporal" | "padroeira" | "fim" | "boro_feriado" | "boro_temporal" | "boro_padroeira" | "selva_feriado" | "selva_temporal" | "selva_padroeira" | "leilao" | "esquecidos_despertar";
 let current: HTMLAudioElement | null = null;
 export const voice = {
   play(clip: VoiceClip) {
     if (typeof window === "undefined") return;
     current?.pause();
-    current = new Audio(`/audio/${clip}.mp3`);
+    current = new Audio(clip === "esquecidos_despertar" ? curseVoice.url : `/audio/${clip}.mp3`);
     current.volume = 0.8;
     void current.play().catch(() => {});
   },

@@ -1,3 +1,4 @@
+import { ALTARS, CURSE_MESSAGE, CURSE_ROUND, ESQUECIDOS_BOARD, ESQUECIDOS_CARDS, ESQUECIDOS_EVENTS, FOG_MS, RITUAL_COST, type Curse } from "./esquecidos";
 import { BORO_BOARD, BORO_CARDS, BORO_EVENTS } from "./boro";
 import { BEAST_BITE, BEAST_START, RELIC_NAMES, RELIC_SQUARES, RELIC_STEAL, SELVA_BOARD, SELVA_CARDS, SELVA_EVENTS } from "./selva";
 // Pure game rules for Banco Imobiliário Salinas. The master device is the only writer of GameState.
@@ -128,15 +129,15 @@ export const LUCK_CARDS: LuckCard[] = [
   { text: "Passe Livre da Delegacia de Salinas! Guarde este cartão", amount: 0, freeJail: true },
 ];
 
-export const cityOf = (s?: Pick<GameState, "city">): CityId => s?.city === "boro" || s?.city === "selva" ? s.city : "salinas";
-export const boardFor = (s?: Pick<GameState, "city">) => ({ salinas: BOARD, boro: BORO_BOARD, selva: SELVA_BOARD })[cityOf(s)];
-export const cardsFor = (s: GameState) => ({ salinas: LUCK_CARDS, boro: BORO_CARDS, selva: SELVA_CARDS })[cityOf(s)];
-export const eventsFor = (s: GameState) => ({ salinas: CITY_EVENTS, boro: BORO_EVENTS, selva: SELVA_EVENTS })[cityOf(s)];
-export const cityName = (s: GameState) => ({ salinas: "Salinas", boro: "Cidade Boró", selva: "Selva dos Tambores" })[cityOf(s)];
+export const cityOf = (s?: Pick<GameState, "city">): CityId => s?.city === "boro" || s?.city === "selva" || s?.city === "esquecidos" ? s.city : "salinas";
+export const boardFor = (s?: Pick<GameState, "city">) => ({ salinas: BOARD, boro: BORO_BOARD, selva: SELVA_BOARD, esquecidos: ESQUECIDOS_BOARD })[cityOf(s)];
+export const cardsFor = (s: GameState) => ({ salinas: LUCK_CARDS, boro: BORO_CARDS, selva: SELVA_CARDS, esquecidos: ESQUECIDOS_CARDS })[cityOf(s)];
+export const eventsFor = (s: GameState) => ({ salinas: CITY_EVENTS, boro: BORO_EVENTS, selva: SELVA_EVENTS, esquecidos: ESQUECIDOS_EVENTS })[cityOf(s)];
+export const cityName = (s: GameState) => ({ salinas: "Salinas", boro: "Cidade Boró", selva: "Selva dos Tambores", esquecidos: "Cidade dos Esquecidos" })[cityOf(s)];
 /** Feminine building names take "uma". */
 export const buildingArticle = (s: GameState) => (cityOf(s) === "salinas" ? "um" : "uma");
 export const buildingName = (s: GameState, hotel = false, plural = false) => {
-  const [h, hp, b, bp] = ({ salinas: ["resort", "resorts", "chalé", "chalés"], boro: ["sobrado", "sobrados", "barraca", "barracas"], selva: ["templo", "templos", "cabana", "cabanas"] })[cityOf(s)];
+  const [h, hp, b, bp] = ({ salinas: ["resort", "resorts", "chalé", "chalés"], boro: ["sobrado", "sobrados", "barraca", "barracas"], selva: ["templo", "templos", "cabana", "cabanas"], esquecidos: ["mansão", "mansões", "casa", "casas"] })[cityOf(s)];
   return hotel ? (plural ? hp : h) : (plural ? bp : b);
 };
 
@@ -190,7 +191,7 @@ export type Pending =
   /** Cobrança coletiva: every other active player taps "Enviar Boró" to pay `targetId`. */
   | { kind: "collect"; targetId: string; amount: number; reason: string; paid: string[]; endsAt: number };
 
-export type CityId = "salinas" | "boro" | "selva";
+export type CityId = "salinas" | "boro" | "selva" | "esquecidos";
 export interface GameState {
   /** Missing city in existing rooms means Salinas. */
   city?: CityId;
@@ -220,6 +221,8 @@ export interface GameState {
   beast?: number;
   /** Selva: relic index -> holder player id. */
   relics?: Record<string, string>;
+  /** Esquecidos only: shared cooperative finale, no private roles in public state. */
+  curse?: Curse;
 }
 
 export const newState = (city: CityId = "salinas"): GameState => ({
@@ -249,7 +252,7 @@ export function activeCityEvent(s: GameState, now = Date.now()) {
   if (!ev) return null;
   return ev.expiresAt !== undefined ? (now < ev.expiresAt ? ev : null) : ((ev.until ?? 0) > (s.round ?? 0) ? ev : null);
 }
-export const startBonus = (s: GameState, now = Date.now()) => (activeCityEvent(s, now)?.kind === "padroeira" ? 400 : START_BONUS);
+export const startBonus = (s: GameState, now = Date.now()) => horrorActive(s) ? 0 : (activeCityEvent(s, now)?.kind === "padroeira" ? 400 : START_BONUS);
 export function expireCityEvent(s: GameState, now = Date.now()): GameState {
   return s.cityEvent && !activeCityEvent(s, now) ? { ...s, cityEvent: null } : s;
 }
@@ -281,6 +284,7 @@ export function financeSplit(balance: number, amount: number) {
 }
 /** Amortização voluntária: o jogador escolhe quanto pagar do financiamento. */
 export function repayLoan(s: GameState, id: string, amount: number): GameState {
+  if (horrorActive(s)) return s;
   const p = s.players.find((x) => x.id === id);
   if (!p || p.out || !p.loan) return s;
   const a = Math.min(Math.floor(amount), p.loan, p.balance);
@@ -338,6 +342,7 @@ function sendToJail(s: GameState, id: string, why: string): GameState {
 
 /** Pay the fiança and leave the Delegacia before rolling. */
 export function payBail(s: GameState, id: string): GameState {
+  if (horrorActive(s)) return s;
   const p = s.players.find((x) => x.id === id);
   if (s.phase !== "playing" || s.moving || s.pending || current(s)?.id !== id || !p?.jail || p.balance < JAIL_FINE) return s;
   return say(move(patch(s, id, { jail: 0, doubles: 0 }), id, BANK, JAIL_FINE, "Fiança"), `${p.name} pagou fiança de ${money(JAIL_FINE)}`, "info");
@@ -346,8 +351,13 @@ export function payBail(s: GameState, id: string): GameState {
 /** Step 1 of a roll: dice + new position (master animates movement). moving=false means no movement. */
 export function roll(s: GameState, id: string, d1: number, d2: number, seenRollId?: number): GameState {
   if (s.phase !== "playing" || s.moving || s.pending || current(s)?.id !== id) return s;
-  // A tap made before the last roll finished is stale: never turn it into an extra roll.
   if (seenRollId !== undefined && seenRollId !== s.rollId) return s;
+  if (horrorActive(s)) {
+    const p = current(s);
+    if (!p || (s.curse?.sanity[id] ?? 0) <= 0) return s;
+    return { ...patch(s, id, { pos: (p.pos + d1 + d2) % boardFor(s).length, jail: 0, doubles: 0 }), card: null, dice: [d1, d2], rollId: s.rollId + 1, moving: true };
+  }
+  // Stale roll ids were rejected above, before either city's movement rules.
   let p = current(s);
   const dbl = d1 === d2;
   let base: GameState = { ...s, card: null, dice: [d1, d2], rollId: s.rollId + 1 };
@@ -403,6 +413,7 @@ export const relicCount = (s: GameState, id: string) => Object.values(s.relics ?
 
 /** Step 2: resolve the square the player landed on. */
 export function land(s: GameState, pixId: string, luck: number = Math.random(), now: number = Date.now()): GameState {
+  if (horrorActive(s)) return horrorLand(s, luck);
   const p = current(s);
   let next: GameState = { ...s, moving: false };
   const sq = boardFor(s)[p.pos]!;
@@ -523,6 +534,7 @@ export function finishCollect(s: GameState, now = Date.now()): GameState {
 
 /** Rent: stations scale by count, utilities by dice, streets double with full color and multiply with barraquinhas. */
 export function rentFor(s: GameState, square: number): number {
+  if (horrorActive(s)) return 0;
   const sq = boardFor(s)[square]!;
   const owner = s.owners[square];
   const base = sq.rent ?? 0;
@@ -540,6 +552,7 @@ export function rentFor(s: GameState, square: number): number {
 
 /** Build one barraquinha (4th = Sobrado) on a street of a full color group the player owns. */
 export function build(s: GameState, id: string, square: number): GameState {
+  if (horrorActive(s)) return s;
   const sq = boardFor(s)[square];
   const p = s.players.find((x) => x.id === id);
   if (!sq || !p || p.out || s.phase !== "playing" || s.moving || sq.kind !== "property" || (sq.group ?? 9) > 7) return s;
@@ -558,6 +571,7 @@ export function build(s: GameState, id: string, square: number): GameState {
 export const houseSaleValue = (group: number) => Math.floor(houseCost(group) / 2);
 /** Vender chalé: the bank pays half the build cost. Demolition is uniform (most-built street first). */
 export function sellHouse(s: GameState, id: string, square: number): GameState {
+  if (horrorActive(s)) return s;
   const sq = boardFor(s)[square];
   const p = s.players.find((x) => x.id === id);
   if (!sq || !p || p.out || s.phase !== "playing" || s.moving || s.owners[square] !== id) return s;
@@ -587,7 +601,9 @@ function bankrupt(s: GameState, id: string, creditor: string, keepPending = fals
   next = patch(next, id, { out: true, balance: 0, jail: 0, doubles: 0 });
   next = say(next, `${p.name} faliu!${creditor !== BANK ? ` Bens vão para ${nameOf(s, creditor)}` : ""}`, "bad");
   const alive = next.players.filter((x) => !x.out);
-  if (alive.length <= 1) next = say({ ...next, phase: "over", winner: alive[0]?.id ?? null }, `${alive[0]?.name ?? "Ninguém"} venceu a partida!`, "good");
+  if (horrorActive(next)) {
+    if (!alive.some((x) => (next.curse?.sanity[x.id] ?? 0) > 0)) return horrorFinish(next, false);
+  } else if (alive.length <= 1) next = say({ ...next, phase: "over", winner: alive[0]?.id ?? null }, `${alive[0]?.name ?? "Ninguém"} venceu a partida!`, "good");
   return next;
 }
 /** Cash the player could still raise by mortgaging lands (no barraquinhas in their color). */
@@ -623,6 +639,7 @@ export function giveUp(s: GameState, id: string): GameState {
 }
 
 export function buy(s: GameState, id: string, accept: boolean, now: number = Date.now()): GameState {
+  if (horrorActive(s)) return s;
   if (s.pending?.kind !== "buy" || s.pending.playerId !== id) return s;
   const sq = boardFor(s)[s.pending.square]!;
   let next: GameState = { ...s, pending: null };
@@ -670,6 +687,7 @@ function finishAuction(s: GameState, pd: Extract<Pending, { kind: "auction" }>):
   return endTurn(say(won, `${nameOf(s, pd.bidder)} arrematou ${sq.name} por ${money(pd.bid)}${loan ? ` (${money(loan)} financiado)` : ""}`, "good"));
 }
 export function bid(s: GameState, id: string, amount: number, now: number = Date.now()): GameState {
+  if (horrorActive(s)) return s;
   const pd = s.pending;
   const p = s.players.find((x) => x.id === id);
   if (pd?.kind !== "auction" || !p || p.out || pd.order[pd.turn] !== id) return s;
@@ -706,6 +724,7 @@ export function closeAuction(s: GameState, now: number = Date.now()): GameState 
 
 /** Hipoteca: bank pays half the price; the land stops charging rent. Needs no barraquinhas in its color. */
 export function mortgage(s: GameState, id: string, square: number): GameState {
+  if (horrorActive(s)) return s;
   const sq = boardFor(s)[square];
   if (!sq || s.phase !== "playing" || s.moving || s.owners[square] !== id || isMortgaged(s, square)) return s;
   if (boardFor(s).some((b, i) => b.group === sq.group && housesAt(s, i) > 0)) return s;
@@ -713,6 +732,7 @@ export function mortgage(s: GameState, id: string, square: number): GameState {
   return say(next, `${nameOf(s, id)} hipotecou ${sq.name} (+${money(mortgageValue(square, s))})`, "info");
 }
 export function unmortgage(s: GameState, id: string, square: number): GameState {
+  if (horrorActive(s)) return s;
   const sq = boardFor(s)[square];
   const p = s.players.find((x) => x.id === id);
   if (!sq || !p || s.moving || s.owners[square] !== id || !isMortgaged(s, square) || p.balance < unmortgageCost(square, s)) return s;
@@ -788,6 +808,7 @@ export function cancelPix(s: GameState, id: string): GameState {
 
 function endTurn(s: GameState): GameState {
   if (s.pending || s.phase !== "playing") return s;
+  if (horrorActive(s)) return horrorEndTurn(s);
   const cur = current(s);
   if (cur && !cur.out && !cur.jail && (cur.doubles ?? 0) > 0) return { ...s, log: [`${cur.name} tirou dupla e joga de novo`, ...s.log].slice(0, 30) };
   let next = cur ? patch(s, cur.id, { doubles: 0 }) : s;
@@ -886,4 +907,99 @@ export function kickPlayer(s: GameState, id: string): GameState {
   if (next.pending?.kind === "collect") next = closeCollect(next);
   if (next.phase === "playing" && wasTurn && !next.pending) next = endTurn(next);
   return next;
+}
+
+
+/** The curse is deliberately scoped: legacy rooms and other cities never enter it. */
+export const horrorActive = (s: GameState) => cityOf(s) === "esquecidos" && s.curse?.stage === "awake" && s.phase === "playing";
+export const ritualTarget = (s: GameState) => s.curse?.order[Object.keys(s.curse.altars).length];
+export function altarNear(s: GameState, id: string, altar: number): boolean {
+  const p = s.players.find((x) => x.id === id);
+  if (!p || !(ALTARS as readonly number[]).includes(altar)) return false;
+  const distance = Math.abs(p.pos - altar);
+  return Math.min(distance, boardFor(s).length - distance) <= 6;
+}
+
+/** Master-only queue tick; random and time are supplied by the caller, persisted once. */
+export function horrorTick(s: GameState, now: number, random = 0): GameState {
+  if (cityOf(s) !== "esquecidos" || s.phase !== "playing" || s.moving || s.pending) return s;
+  if (!s.curse) {
+    const properties = boardFor(s).filter((sq) => sq.kind === "property").length;
+    const bought = Object.keys(s.owners).length;
+    if ((s.round ?? 0) < CURSE_ROUND && bought < Math.ceil(properties / 2)) return s;
+    const rotate = Math.min(3, Math.max(0, Math.floor(random * 4)));
+    const order = [...ALTARS.slice(rotate), ...ALTARS.slice(0, rotate)];
+    const curse: Curse = { stage: "awake", awakenedAt: now, nextFogAt: now + FOG_MS, fogGroups: [], consumed: [], altars: {}, sanity: Object.fromEntries(s.players.filter((p) => !p.out).map((p) => [p.id, 100])), torches: Object.fromEntries(s.players.filter((p) => !p.out).map((p) => [p.id, 2])), clue: 0, order };
+    return say({ ...s, curse, cityEvent: null, offer: null, card: null, transfer: null, players: s.players.map((p) => ({ ...p, jail: 0, doubles: 0 })) }, CURSE_MESSAGE, "bad");
+  }
+  if (!horrorActive(s) || now < s.curse.nextFogAt) return s;
+  const c = s.curse;
+  const groups = Array.from({ length: 8 }, (_, i) => i).filter((g) => !c.fogGroups.includes(g));
+  const group = groups[Math.min(groups.length - 1, Math.max(0, Math.floor(random * groups.length)))];
+  if (group === undefined) return s;
+  const lost = boardFor(s).flatMap((sq, i) => sq.group === group ? [i] : []);
+  const owners = { ...s.owners }, houses = { ...s.houses }, mortgaged = { ...s.mortgaged };
+  for (const i of lost) { delete owners[i]; delete houses[i]; delete mortgaged[i]; }
+  const curse: Curse = { ...c, consumed: [...c.consumed, ...lost], fogGroups: [...c.fogGroups, group], nextFogAt: c.nextFogAt + FOG_MS };
+  const offer = s.offer && [...s.offer.giveSquares, ...s.offer.wantSquares].some((i) => lost.includes(i)) ? null : s.offer ?? null;
+  const next = say({ ...s, curse, owners, houses, mortgaged, offer }, `A névoa devorou o bairro ${group + 1}. Suas propriedades desapareceram.`, "bad");
+  return curse.fogGroups.length >= 8 ? horrorFinish(next, false) : next;
+}
+function horrorFinish(s: GameState, escaped: boolean): GameState {
+  if (!s.curse) return s;
+  return say({ ...s, phase: "over", winner: null, pending: null, moving: false, offer: null, curse: { ...s.curse, stage: escaped ? "escaped" : "forgotten" } }, escaped ? "Os quatro altares se acenderam. Todos escaparam! A cidade voltou a lembrar seus nomes." : "A cidade esqueceu seus nomes. A maldição venceu…", escaped ? "good" : "bad");
+}
+function horrorEndTurn(s: GameState): GameState {
+  if (!s.curse || !s.players.length) return s;
+  const alive = s.players.filter((p) => !p.out && (s.curse?.sanity[p.id] ?? 0) > 0);
+  if (!alive.length) return horrorFinish(s, false);
+  let turn = s.turn;
+  for (let k = 0; k < s.players.length; k++) {
+    turn = (turn + 1) % s.players.length;
+    const p = s.players[turn];
+    if (p && !p.out && (s.curse.sanity[p.id] ?? 0) > 0) break;
+  }
+  return { ...s, turn, round: (s.round ?? 0) + (turn <= s.turn ? 1 : 0) };
+}
+function horrorLand(s: GameState, random: number): GameState {
+  const p = current(s), c = s.curse;
+  if (!p || !c) return s;
+  const sq = boardFor(s)[p.pos];
+  const safe = (ALTARS as readonly number[]).includes(p.pos);
+  const fog = c.consumed.includes(p.pos);
+  const memory = sq?.kind === "luck";
+  const change = safe ? 15 : fog ? -20 : memory ? (random < 0.5 ? 10 : -10) : -5;
+  const sanity = { ...c.sanity, [p.id]: Math.max(0, Math.min(100, (c.sanity[p.id] ?? 100) + change)) };
+  const torch = memory && random < 0.5;
+  const torches = torch ? { ...c.torches, [p.id]: Math.min(4, (c.torches[p.id] ?? 0) + 1) } : c.torches;
+  const text = sanity[p.id] === 0 ? `${p.name} se perdeu nas sombras. Uma tocha de um aliado pode resgatá-lo.` : safe ? `${p.name} encontrou abrigo no altar: +15 de sanidade.` : torch ? `${p.name} encontrou uma memória e uma tocha: +10 de sanidade.` : `${p.name}: ${fog ? "a névoa queimou 20" : memory ? "um sussurro roubou 10" : "a cidade roubou 5"} de sanidade.`;
+  return horrorEndTurn(say({ ...s, moving: false, curse: { ...c, sanity, torches, clue: c.clue + (memory ? 1 : 0) } }, text, change > 0 ? "good" : "bad"));
+}
+/** Ritual and torch actions are voluntary and do not consume the dice turn. */
+export function purifyAltar(s: GameState, id: string, altar: number, sacrifice?: number): GameState {
+  const p = s.players.find((x) => x.id === id), c = s.curse;
+  if (!horrorActive(s) || s.moving || s.pending || !p || p.out || !c || (c.sanity[id] ?? 0) <= 0 || ritualTarget(s) !== altar || !altarNear(s, id, altar)) return s;
+  let next = s;
+  if (sacrifice !== undefined) {
+    if (!Number.isInteger(sacrifice) || s.owners[sacrifice] !== id) return s;
+    const owners = { ...s.owners }, houses = { ...s.houses }, mortgaged = { ...s.mortgaged };
+    delete owners[sacrifice]; delete houses[sacrifice]; delete mortgaged[sacrifice];
+    next = { ...s, owners, houses, mortgaged, offer: null };
+  } else {
+    if (p.balance < RITUAL_COST) return s;
+    next = move(s, id, BANK, RITUAL_COST, "Oferenda ao altar");
+  }
+  const altars = { ...c.altars, [altar]: id };
+  next = say({ ...next, curse: { ...c, altars, sanity: { ...c.sanity, [id]: Math.min(100, (c.sanity[id] ?? 0) + 20) } } }, `${p.name} purificou ${boardFor(s)[altar]?.name}: ${Object.keys(altars).length}/4 selos quebrados!`, "good");
+  return Object.keys(altars).length === 4 ? horrorFinish(next, true) : next;
+}
+export function useTorch(s: GameState, id: string, target = id): GameState {
+  const c = s.curse, p = s.players.find((x) => x.id === id), other = s.players.find((x) => x.id === target);
+  if (!horrorActive(s) || s.moving || s.pending || !c || !p || p.out || !other || other.out || (c.sanity[id] ?? 0) <= 0 || (c.torches[id] ?? 0) < 1 || (c.sanity[target] ?? 0) >= 100) return s;
+  return say({ ...s, curse: { ...c, torches: { ...c.torches, [id]: (c.torches[id] ?? 0) - 1 }, sanity: { ...c.sanity, [target]: Math.min(100, (c.sanity[target] ?? 0) + 30) } } }, `${p.name} iluminou o caminho de ${other.name}: +30 de sanidade.`, "good");
+}
+export function travelAltar(s: GameState, id: string): GameState {
+  const c = s.curse, altar = ritualTarget(s);
+  if (!horrorActive(s) || s.moving || s.pending || !c || altar === undefined || current(s)?.id !== id || (c.sanity[id] ?? 0) <= 0 || (c.torches[id] ?? 0) < 1) return s;
+  return say({ ...patch(s, id, { pos: altar }), curse: { ...c, torches: { ...c.torches, [id]: (c.torches[id] ?? 0) - 1 } } }, `${nameOf(s, id)} gastou uma tocha e atravessou as sombras até ${boardFor(s)[altar]?.name}.`, "info");
 }

@@ -13,6 +13,10 @@ const NOTES = [
   "📰 Gazeta mais compacta em todos os tabuleiros.",
 ];
 const CITY_NOTES: Partial<Record<string, string[]>> = {
+  esquecidos: [
+    "🕯️ Cidade dos Esquecidos: a maldição desperta na 8ª rodada ou quando metade dos imóveis tiver dono.",
+    "🌫️ Fuga cooperativa: protejam a sanidade, compartilhem tochas e acendam os quatro altares antes que a névoa engula os 8 bairros.",
+  ],
   selva: [
     "🐆 Rugido da Onça na TV quando ela anda pelo tabuleiro.",
     "💎 Altar das Relíquias mostra quem está perto de vencer.",

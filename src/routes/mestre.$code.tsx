@@ -4,6 +4,8 @@ import { QRCodeSVG } from "qrcode.react";
 import { publishState, joinRoomChannel, ensureRoomAccess, accessRoom } from "@/lib/room";
 import * as G from "@/lib/game";
 import { SelvaRulesButton } from "@/components/SelvaGuide";
+import { CurseReveal, HorrorPanel, HorrorRulesButton } from "@/components/HorrorPanel";
+import { Button } from "@/components/ui/button";
 import { Board } from "@/components/Board";
 import { DicePair } from "@/components/Dice";
 import { music, sfx, voice, type VoiceClip } from "@/lib/sfx";
@@ -67,6 +69,10 @@ function Master() {
       case "scratch": s = G.revealCard(s, a.player_id); break;
       case "bid": s = G.bid(s, a.player_id, Number(p.amount)); break;
       case "pass": s = G.passBid(s, a.player_id); break;
+      case "horrorTick": { const next = G.horrorTick(s, Date.now(), Math.random()); if (next === s) return; s = next; break; }
+      case "purifyAltar": { const h = p as { square?: number; sacrifice?: number }; s = G.purifyAltar(s, a.player_id, Number(h.square), h.sacrifice); break; }
+      case "useTorch": s = G.useTorch(s, a.player_id, String(p.to ?? a.player_id)); break;
+      case "travelAltar": s = G.travelAltar(s, a.player_id); break;
       case "repayLoan": s = G.repayLoan(s, a.player_id, Number(p.amount)); break;
       case "mortgage": s = G.mortgage(s, a.player_id, Number((p as { square?: number }).square)); break;
       case "unmortgage": s = G.unmortgage(s, a.player_id, Number((p as { square?: number }).square)); break;
@@ -101,7 +107,7 @@ function Master() {
         if (!s.moving) { sfx.dice(); break; }
         commit(s);
         sfx.dice();
-        if (d1 === d2 && !s.players.find((x) => x.id === a.player_id)?.jail && voiceRef.current) {
+        if (d1 === d2 && !s.players.find((x) => x.id === a.player_id)?.jail && voiceRef.current && !G.horrorActive(s)) {
           const dn = s.players.find((x) => x.id === a.player_id)?.doubles ?? 1;
           voice.play(dn >= 2 ? "dupla2" : "dupla1");
         }
@@ -118,7 +124,8 @@ function Master() {
         await new Promise((r) => setTimeout(r, 400));
         setFocus(null);
         await new Promise((r) => setTimeout(r, 150));
-        s = G.land(ref.current!, crypto.randomUUID());
+        if (!ref.current) return;
+        s = G.land(ref.current, crypto.randomUUID());
         { const sq = G.boardFor(s)[s.players.find((x) => x.id === a.player_id)?.pos ?? 0]; if (sq?.group === 8) sfx.trainWhistle(); else if (sq?.kind === "rest" || sq?.name.includes("Cafezinho")) sfx.coffeeCup(); }
         break;
       }
@@ -220,6 +227,18 @@ function Master() {
     enqueue({ id: `host-${crypto.randomUUID()}`, player_id: cur?.id ?? "", type, payload, created_at: "" });
   }, [enqueue]);
 
+  const horrorStage = state?.curse?.stage;
+  useEffect(() => {
+    if (state?.city !== "esquecidos" || state.phase !== "playing") return;
+    const timer = setInterval(() => hostAct("horrorTick"), 1000);
+    return () => clearInterval(timer);
+  }, [state?.city, state?.phase, hostAct]);
+  useEffect(() => {
+    if (horrorStage !== "awake") return;
+    music.stop(); setSong(false); sfx.blackout();
+    if (voiceRef.current) voice.play("esquecidos_despertar");
+  }, [horrorStage]);
+
   // Turn timer: 60 s to roll, buy, pay rent or settle a debt; then the bank acts for the player.
   const tpd = state?.pending;
   // Turn timer disabled by request: players have unlimited time; the host can still skip or kick.
@@ -279,9 +298,9 @@ function Master() {
     if (state.event.tone === "good") sfx.coin(); else if (state.event.tone === "bad") sfx.bad();
     // Narração sutil: só notícias da cidade, Sorte/Revés e o vencedor.
     const t = paymentText(state.event.text);
-    const clip: VoiceClip | null = state.phase === "over" ? "fim"
+    const clip: VoiceClip | null = state.curse ? null : state.phase === "over" ? "fim"
       : t.includes("ganhou o cartão Saia Livre") ? "saia_livre"
-      : state.cityEvent && t.includes(state.cityEvent.text) ? (G.cityOf(state) === "salinas" ? state.cityEvent.kind : `${G.cityOf(state) as "boro" | "selva"}_${state.cityEvent.kind}` as VoiceClip)
+      : G.cityOf(state) !== "esquecidos" && state.cityEvent && t.includes(state.cityEvent.text) ? (G.cityOf(state) === "salinas" ? state.cityEvent.kind : `${G.cityOf(state) as "boro" | "selva"}_${state.cityEvent.kind}` as VoiceClip)
       : state.card && t.includes(state.card.text) ? (state.card.good ? "sorte" : "reves")
       : null;
     if (voiceOn && clip) voice.play(clip);
@@ -306,7 +325,14 @@ function Master() {
   const winner = state.players.find((p) => p.id === state.winner);
   const ranking = [...state.players].sort((a, b) => G.netWorth(state, b.id) - G.netWorth(state, a.id));
   const center =
-    state.phase === "over" ? (
+    state.phase === "over" && state.curse ? (
+      <>
+        <p className="text-[10cqw]">{state.curse.stage === "escaped" ? "🕯️" : "🌫️"}</p>
+        <h1 className="font-display text-[7cqw] leading-tight text-secondary">{state.curse.stage === "escaped" ? "Todos escaparam!" : "A cidade venceu"}</h1>
+        <p className="max-w-full text-[3.6cqw]">{state.curse.stage === "escaped" ? "Vocês quebraram os quatro selos. Ninguém foi esquecido." : "A névoa guardou seus nomes. Uma nova partida pode mudar o destino."}</p>
+        <Button asChild className="mt-3 h-auto whitespace-normal text-[3cqw]"><Link to="/esquecidos">Voltar aos Esquecidos</Link></Button>
+      </>
+    ) : state.phase === "over" ? (
       <>
         <p className="font-display text-[5.4cqw] uppercase text-muted-foreground">Fim de jogo</p>
         <Animal id={winner?.animal} className="animate-bob h-[39.6cqw] w-auto" />
@@ -410,10 +436,12 @@ function Master() {
         <span className="flex-1 font-display text-[clamp(13px,2.6vh,28px)]">{G.cityOf(state) === "salinas" ? "Banco Imobiliário Salinas" : G.cityName(state)}</span>
         <span className="font-display tracking-widest text-[clamp(12px,2.2vh,24px)]">{code}</span>
         {G.cityOf(state) === "selva" && <SelvaRulesButton className="border-primary-foreground" />}
+        {G.cityOf(state) === "esquecidos" && <HorrorRulesButton />}
         <button onClick={() => setPaused(true)} aria-label="Pausar" className="min-h-10 rounded-lg border-2 border-primary-foreground px-2 font-display">❚❚</button>
       </div>
       <Gazette state={state} className="text-[clamp(10px,1.7vh,18px)]" />
       <RelicTracker state={state} className="text-[clamp(10px,1.7vh,18px)]" />
+      <HorrorPanel state={state} />
       <div className="grid grid-cols-2 gap-[0.8vh]">
         {ranking.map((p) => {
           const i = state.players.indexOf(p);
@@ -447,11 +475,12 @@ function Master() {
   );
 
   return (
-    <main className={`${G.cityOf(state) === "salinas" ? "" : `${G.cityOf(state)}-game `}azulejo relative flex h-dvh items-center justify-center overflow-hidden p-[1vmin]`}>
+    <main className={`${G.cityOf(state) === "salinas" ? "" : `${G.cityOf(state)}-game `}${G.horrorActive(state) ? "curse-awake " : ""}azulejo relative flex h-dvh items-center justify-center overflow-hidden p-[1vmin]`}>
       <div className="flex size-full min-h-0 min-w-0 items-center justify-center" style={{ containerType: "size" }}>
         <Board state={state} center={center} side={side} displayPos={displayPos} focus={focus} />
       </div>
 
+      {G.cityOf(state) === "esquecidos" && <CurseReveal state={state} code={code} />}
       {paused && (
         <div className="absolute inset-0 z-40 flex items-center justify-center bg-foreground/60 p-6">
           <div className="flex max-h-full w-full max-w-xl flex-col gap-3 rounded-2xl border-4 border-border bg-card p-5 shadow-[8px_8px_0_var(--foreground)]">

@@ -1,4 +1,4 @@
-import { boardFor, buildingName, cityOf, groupTag, HOUSE_MULT, housesAt, isMortgaged, money, ownsGroup, rentFor, startBonus, type GameState } from "@/lib/game";
+import { boardFor, buildingName, cityOf, groupTag, HOUSE_MULT, housesAt, isMortgaged, money, ownsGroup, rentFor, startBonus, horrorActive, type GameState } from "@/lib/game";
 import { useState, type ReactNode } from "react";
 import { Animal } from "./Animal";
 
@@ -107,6 +107,7 @@ export function Board({ state, center, side, displayPos, focus }: { state: GameS
           const { r, c, side } = cell(i);
           const owner = state.players.find((p) => p.id === state.owners[i]);
           const here = state.players.filter((p) => (displayPos[p.id] ?? p.pos) === i);
+          const consumed = cityOf(state) === "esquecidos" && !!state.curse?.consumed.includes(i);
           const prop = sq.kind === "property";
           const rent = prop ? rentFor(state, i) : 0;
           const h = housesAt(state, i);
@@ -122,7 +123,7 @@ export function Board({ state, center, side, displayPos, focus }: { state: GameS
             </div>
           );
           const ring = focus === i ? "animate-glow z-20 ring-4 ring-secondary ring-offset-2 ring-offset-background" : full ? "monopoly-glow z-10" : "";
-          const base = `relative overflow-hidden text-left shadow-[0_1px_0_color-mix(in_oklab,var(--foreground)_10%,transparent)] transition-[transform,box-shadow] duration-200 hover:z-20 hover:-translate-y-[0.15cqw] ${ring}`;
+          const base = `${consumed ? "fog-consumed" : ""} relative overflow-hidden text-left shadow-[0_1px_0_color-mix(in_oklab,var(--foreground)_10%,transparent)] transition-[transform,box-shadow] duration-200 hover:z-20 hover:-translate-y-[0.15cqw] ${ring}`;
 
           if (CORNER[i]) {
             const k = CORNER[i]!;
@@ -130,7 +131,7 @@ export function Board({ state, center, side, displayPos, focus }: { state: GameS
               <button type="button" onClick={() => setPicked(i)} key={i} style={{ gridRow: r, gridColumn: c }} className={`${base} flex flex-col items-center justify-center gap-[0.25cqw] rounded-[1cqw] p-[0.4cqw] text-center overflow-hidden ${k.tone}`}>
                 <Icon name={k.icon} className="size-[2.8cqw] shrink-0" />
                 <span className="max-w-full break-words font-display text-[1.25cqw] leading-none">{cityOf(state) !== "salinas" ? sq.name.replace(" (visita)", "") : k.title}</span>
-                <span className="rounded-full bg-card/80 px-[0.6cqw] py-[0.1cqw] text-[0.88cqw] font-semibold shrink-0 text-foreground max-w-full truncate">{i === 0 ? `+${money(startBonus(state))}` : k.tag}</span>
+                <span className="rounded-full bg-card/80 px-[0.6cqw] py-[0.1cqw] text-[0.88cqw] font-semibold shrink-0 text-foreground max-w-full truncate">{horrorActive(state) ? (state.curse?.altars[i] ? "🔥 Purificado" : "🕯️ Altar") : i === 0 ? `+${money(startBonus(state))}` : cityOf(state) === "esquecidos" ? (i === 17 ? "Só visitando" : i === 28 ? "Abrigo" : "Masmorra") : k.tag}</span>
                 {tokens}
               </button>
             );
@@ -154,7 +155,7 @@ export function Board({ state, center, side, displayPos, focus }: { state: GameS
                   <span className={`flex shrink-0 items-center leading-none ${horiz ? "flex-row gap-[0.3cqw]" : "flex-col gap-[0.15cqw]"}`}>
                     {!owner && (horiz || sq.name.length <= 16) && <span className="text-[0.9cqw] text-muted-foreground">{money(sq.price!)}</span>}
                     <span className={`rounded-full px-[0.5cqw] py-[0.1cqw] text-[1cqw] font-bold ${full || h > 0 ? "bg-secondary text-secondary-foreground" : owner ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"}`}>
-                      {money(rent)}{full && !h ? " ×2" : ""}
+                      {consumed ? "Névoa" : horrorActive(state) ? "Fechado" : money(rent)}{!horrorActive(state) && full && !h ? " ×2" : ""}
                     </span>
                   </span>
                 ) : (

@@ -15,6 +15,7 @@ import { ScratchCard } from "@/components/ScratchCard";
 import { Gazette, RelicTracker, MoneyRain, ScratchingBanner, TitleInfo } from "@/components/GameInfo";
 import { SelvaIntro, SelvaRulesButton } from "@/components/SelvaGuide";
 import { MiniMap } from "@/components/MiniMap";
+import { CurseReveal, HorrorPanel, HorrorRulesButton } from "@/components/HorrorPanel";
 import { UpdateNotes } from "@/components/UpdateNotes";
 
 export const Route = createFileRoute("/jogar/$code")({
@@ -145,7 +146,7 @@ function Wallet() {
   const touchesMe = t && (t.from === pid || t.to === pid);
 
   return (
-    <main className={`${G.cityOf(state) === "salinas" ? "" : `${G.cityOf(state)}-game `}azulejo mx-auto flex min-h-dvh max-w-md flex-col gap-3 p-3`}>
+    <main className={`${G.cityOf(state) === "salinas" ? "" : `${G.cityOf(state)}-game `}${G.horrorActive(state) ? "curse-awake " : ""}azulejo mx-auto flex min-h-dvh max-w-md flex-col gap-3 p-3`}>
       {netFail && (
         <button role="alert" onClick={() => setNetFail(false)} className="sticky top-2 z-50 rounded-xl border-4 border-border bg-destructive px-3 py-2 text-sm font-bold text-destructive-foreground">
           📶 Sua jogada não chegou ao tabuleiro. Confira a internet e toque de novo.
@@ -165,7 +166,8 @@ function Wallet() {
       </header>
 
       <UpdateNotes city={G.cityOf(state)} />
-      {!!me.loan && !me.out && (
+      {G.cityOf(state) === "esquecidos" && <><div className="flex justify-end"><HorrorRulesButton /></div><CurseReveal state={state} code={code} /><HorrorPanel state={state} playerId={pid} act={act} /></>}
+      {!!me.loan && !me.out && !G.horrorActive(state) && (
         <Card>
           <p className="text-xs font-bold uppercase text-muted-foreground">🏛️ Financiamento bancário</p>
           <p className="font-display text-2xl">{G.money(me.loan)} a pagar</p>
@@ -179,7 +181,7 @@ function Wallet() {
       <Gazette state={state} className="text-sm" />
       <RelicTracker state={state} className="text-sm" />
       {pd?.kind === "scratch" && pd.playerId !== pid && <ScratchingBanner state={state} />}
-      {state.phase === "over" && <MoneyRain />}
+      {state.phase === "over" && !state.curse && <MoneyRain />}
       {touchesMe && <TransferShow state={state} top />}
 
       {state.phase === "lobby" ? (
@@ -197,7 +199,7 @@ function Wallet() {
             </div>
           </div>
           <div className="my-3 flex justify-center"><DicePair dice={state.dice} rollId={state.rollId} size={68} /></div>
-          {state.phase === "over" && <p className="font-display text-2xl">🏆 {state.players.find((p) => p.id === state.winner)?.name} venceu!</p>}
+          {state.phase === "over" && <p className="font-display text-2xl">{state.curse ? (state.curse.stage === "escaped" ? "🕯️ Todos escaparam!" : "🌫️ A cidade venceu…") : `🏆 ${state.players.find((p) => p.id === state.winner)?.name} venceu!`}</p>}
           {me.out && <p className="font-display text-xl text-destructive">Você faliu 😢</p>}
           {myTurn && !pd && !state.moving && me.jail ? (
             <div className="mb-2 rounded-xl border-4 border-border bg-muted p-2">
@@ -207,7 +209,7 @@ function Wallet() {
             </div>
           ) : null}
           {myTurn && !pd && state.phase === "playing" && (
-            <button disabled={state.moving} onClick={() => { sfx.dice(); navigator.vibrate?.([40, 60, 40]); act("roll", { rollId: state.rollId }); }} className={`${btn} bg-primary py-5 text-2xl text-primary-foreground`}>
+            <button disabled={state.moving || (G.horrorActive(state) && (state.curse?.sanity[pid] ?? 0) <= 0)} onClick={() => { sfx.dice(); navigator.vibrate?.([40, 60, 40]); act("roll", { rollId: state.rollId }); }} className={`${btn} bg-primary py-5 text-2xl text-primary-foreground`}>
               {state.moving ? "Andando…" : "🎲 Jogar dados"}
             </button>
           )}
@@ -410,7 +412,7 @@ function Neighborhoods({ state, pid, balance, act, onSell, onInspect, onTrade }:
                       <button type="button" onClick={() => onInspect(i)} className="min-h-10 flex-1 truncate text-left font-bold underline decoration-dotted underline-offset-4">{b.name}</button>
                       <span className="text-xs">{h ? (h >= G.MAX_HOUSES ? "🏠" : "⛺".repeat(h)) : ""} {mort ? "Hipotecado" : `Aluguel ${G.money(G.rentFor(state, i))}`}</span>
                     </div>
-                    {state.phase === "playing" && (
+                    {state.phase === "playing" && !G.horrorActive(state) && (
                       <div className="mt-1 flex gap-1 overflow-hidden rounded-md border-2 border-border">
                         {mort ? (
                           <button disabled={state.moving || balance < G.unmortgageCost(i, state)} onClick={() => act("unmortgage", { square: i })} className={`${miniBtn} bg-muted`}>Resgatar {G.money(G.unmortgageCost(i, state))}</button>
