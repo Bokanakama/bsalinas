@@ -53,3 +53,5 @@ use the editor.
 
 - Master auction display clocks live in their own component while absolute deadlines resolve on the master queue — clock ticks must not rerender the board.
 - Optional wallet dialogs load lazily with intent prefetch for trade/map — reduces initial gameplay code without removing controls.
+- Horror sensory feedback is client-local, opt-in for audio/haptics, stops on hidden/unfocused pages and honors reduced motion; shared state only supplies positions and sanity — prevents sensory preferences from changing game rules or writing room state.
+- The TV ghost animates one overlay through perimeter cell coordinates while purified altars use scoped styles — preserves board geometry and keeps player positions authoritative.

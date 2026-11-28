@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Flame, HelpCircle, KeyRound, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Animal } from "@/components/Animal";
 import * as G from "@/lib/game";
 import { ALTARS, CRISIS_MS, CURSE_MESSAGE, RITUAL_COST } from "@/lib/esquecidos";
 
@@ -28,7 +29,6 @@ export function HorrorPanel({ state, playerId, act }: { state: G.GameState; play
   if (!G.horrorActive(state) || !c) return null;
   const target = G.ritualTarget(state);
   const me = state.players.find((p) => p.id === playerId);
-  const active = G.horrorActive(state);
   const near = me && target !== undefined && G.altarNear(state, me.id, target);
   const blocked = state.moving || !!state.pending || !me || me.out || (c.sanity[me.id] ?? 0) <= 0;
   const cooling = c.lastSealRollId === state.rollId;
@@ -36,31 +36,27 @@ export function HorrorPanel({ state, playerId, act }: { state: G.GameState; play
   const distance = me && target !== undefined ? Math.min(Math.abs(me.pos - target), 56 - Math.abs(me.pos - target)) : 0;
   const ghostDistance = me ? Math.min(Math.abs(me.pos - (c.ghost ?? 28)), 56 - Math.abs(me.pos - (c.ghost ?? 28))) : 56;
   const mine = Object.entries(state.owners).filter(([, owner]) => owner === playerId);
-  return <section aria-label="Estado da maldição" className="rounded-lg border border-primary/40 bg-card p-3">
+  return <section aria-label="Estado da maldição" className="horror-mission border-y border-primary/40 py-3">
     <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="font-display text-base text-secondary"><KeyRound className="mr-1 inline size-4" />{c.stage === "escaped" ? "Maldição contida · banco aberto" : c.stage === "forgotten" ? "Banco aberto em emergência" : "Quebrem os quatro selos"}</h2><span className="text-xs font-bold text-muted-foreground">{Object.keys(c.altars).length}/4 selos · {c.fogGroups.length}/8 bairros</span></div>
-    {active && <p className="mt-1 text-xs text-muted-foreground">Banco fechado · {Math.floor(remaining / 60)}:{String(remaining % 60).padStart(2, "0")} para os selos · névoa em {Math.max(0, Math.ceil((c.nextFogAt - (now || c.awakenedAt)) / 1000))}s</p>}
-    {!active && <p role="status" className="mt-2 text-sm">A partida continua normalmente.{c.stage === "forgotten" ? ` Penalidade: ${Math.round((c.penaltyRate ?? 0) * 100)}% do saldo; ${c.consumed.length} imóveis sem aluguel.` : " Os imóveis voltaram a cobrar aluguel."}</p>}
-    {active && target !== undefined && <div className="mt-3 border-l-2 border-secondary pl-3" aria-label="Missão do próximo selo">
+    <p className="mt-1 text-xs text-muted-foreground">Banco fechado · <strong className={remaining <= 60 ? "text-destructive" : "text-foreground"}>{Math.floor(remaining / 60)}:{String(remaining % 60).padStart(2, "0")}</strong> para os selos · névoa em {Math.max(0, Math.ceil((c.nextFogAt - (now || c.awakenedAt)) / 1000))}s</p>
+    {target !== undefined && <div className="mt-3 border-l-2 border-secondary pl-3" aria-label="Missão do próximo selo">
       <p className="text-xs font-bold uppercase text-secondary">Próximo selo · casa {target}</p>
       <h3 className="font-display text-lg leading-tight">{G.boardFor(state)[target]?.name}</h3>
-      <ol className="mt-2 space-y-1 text-xs leading-relaxed">
-        <li>1. {me ? near ? "Você já está perto do altar." : `Faltam ${distance} casas até o altar. Jogue os dados ou use uma tocha na sua vez.` : "Cheguem até 6 casas do altar destacado."}</li>
-        <li>2. Ofereça {G.money(RITUAL_COST)} ou sacrifique um imóvel seu.</li>
-        <li>3. {cooling ? "Selo anterior concluído. Joguem os dados para liberar este." : "Acenda o selo; depois, joguem os dados para liberar o próximo."}</li>
-      </ol>
+      <p className="mt-2 text-sm font-semibold">{me ? near ? "Ao alcance · oferenda disponível" : `${distance} casas de distância · alcance de 6` : `Oferenda: ${G.money(RITUAL_COST)} ou um imóvel · alcance de 6 casas`}</p>
       {me && <p className="mt-2 text-xs font-bold text-secondary" role="status">{cooling ? "Aguardando a próxima jogada dos dados" : state.moving ? "Aguarde o movimento terminar" : state.pending ? "Conclua a transação pendente" : (c.sanity[me.id] ?? 0) <= 0 ? "Peça a um aliado para recuperar sua sanidade" : near ? "Você pode fazer a oferenda agora" : G.current(state)?.id === me.id ? "Sua vez: jogue ou vá ao altar com uma tocha" : "Aguarde sua vez para se aproximar"}</p>}
     </div>}
     <div className="mt-3 grid grid-cols-4 gap-1">{ALTARS.map((altar, i) => <div key={altar} className={`rounded border p-1.5 text-center ${c.altars[altar] ? "border-success bg-success/15" : target === altar ? "border-primary bg-primary/10" : "border-border"}`}><span className="text-lg">{c.altars[altar] ? "🔥" : "🕯️"}</span><p className="text-xs font-semibold">{["Início", "Masmorra", "Santuário", "Abismo"][i]}</p><p className="truncate text-[10px] text-muted-foreground">{c.altars[altar] ? state.players.find((p) => p.id === c.altars[altar])?.name : target === altar ? "Próximo selo" : "Trancado"}</p></div>)}</div>
-    <ul className="mt-3 space-y-1.5">{state.players.filter((p) => !p.out).map((p) => <li key={p.id} className="flex items-center justify-between gap-2 text-xs"><span className="truncate font-semibold">{p.name}{p.id === playerId ? " · você" : ""}</span><span className={(c.sanity[p.id] ?? 0) <= 20 ? "text-destructive font-bold" : "text-muted-foreground"}>{c.sanity[p.id] ?? 0}% · 🔥 {c.torches[p.id] ?? 0}</span></li>)}</ul>
-    {active && me && act && <div className="mt-4 space-y-3 border-t border-border pt-3">
+    {me && <div className="mt-3 flex items-center gap-3 border-b border-border pb-3"><Animal id={me.animal} className="size-10 object-contain" /><div className="min-w-0 flex-1"><p className="text-xs font-semibold">Sua sanidade · {c.sanity[me.id] ?? 0}%</p><progress aria-label="Sua sanidade" max={100} value={c.sanity[me.id] ?? 0} className={`sanity-meter mt-1 w-full ${(c.sanity[me.id] ?? 0) < 40 ? "sanity-low" : ""}`} /></div><span className="shrink-0 text-sm font-semibold">🔥 {c.torches[me.id] ?? 0}</span></div>}
+    {!me && <ul className="mt-3 space-y-2">{state.players.filter((p) => !p.out).map((p) => <li key={p.id} className="flex items-center gap-2 text-xs"><Animal id={p.animal} className="size-7 object-contain" /><span className="min-w-0 flex-1 truncate font-semibold">{p.name}</span><span className={(c.sanity[p.id] ?? 0) <= 20 ? "text-destructive font-bold" : "text-muted-foreground"}>{c.sanity[p.id] ?? 0}% · 🔥 {c.torches[p.id] ?? 0}</span></li>)}</ul>}
+    {me && act && <div className="mt-3 space-y-3">
       {(c.sanity[me.id] ?? 0) === 0 && <p role="status" className="text-sm text-destructive">Você está perdido. Peça uma tocha a um aliado para voltar a jogar.</p>}
-      <div className="grid grid-cols-2 gap-2"><Button disabled={blocked || (c.torches[me.id] ?? 0) < 1 || (c.sanity[me.id] ?? 0) >= 100} variant="outline" className="h-auto min-h-11 whitespace-normal" onClick={() => act("useTorch", { to: me.id })}><Flame />Recuperar +30</Button><Button disabled={blocked || G.current(state)?.id !== me.id || (c.torches[me.id] ?? 0) < 1 || near} variant="secondary" className="h-auto min-h-11 whitespace-normal" onClick={() => act("travelAltar")}><KeyRound />Ir ao altar · 1 🔥</Button></div>
-      <div className="flex flex-wrap gap-2">{state.players.filter((p) => p.id !== me.id && !p.out && (c.sanity[p.id] ?? 0) < 100).map((p) => <Button key={p.id} disabled={blocked || (c.torches[me.id] ?? 0) < 1} variant="outline" size="sm" onClick={() => act("useTorch", { to: p.id })}>🔥 Ajudar {p.name}</Button>)}</div>
+      {!near && <Button disabled={blocked || G.current(state)?.id !== me.id || (c.torches[me.id] ?? 0) < 1} variant="secondary" className="h-auto min-h-12 w-full whitespace-normal" onClick={() => act("travelAltar")}><KeyRound />Ir ao altar · 1 🔥</Button>}
       <Button className="h-auto min-h-11 w-full whitespace-normal" disabled={blocked || cooling || !near || me.balance < RITUAL_COST} onClick={() => act("purifyAltar", { square: target })}>Quebrar selo · {G.money(RITUAL_COST)}</Button>
       {mine.length > 0 && <div className="flex gap-2"><select aria-label="Imóvel para sacrificar" value={sacrifice} onChange={(e) => setSacrifice(e.target.value)} className="min-h-11 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-xs"><option value="">Escolher imóvel</option>{mine.map(([i]) => <option key={i} value={i}>{G.boardFor(state)[Number(i)]?.name}</option>)}</select><Button variant="destructive" disabled={blocked || cooling || !near || !mine.some(([i]) => i === sacrifice)} onClick={() => { if (window.confirm(`Sacrificar ${G.boardFor(state)[Number(sacrifice)]?.name} para acender este selo?`)) act("purifyAltar", { square: target, sacrifice: Number(sacrifice) }); }}>Sacrificar</Button></div>}
-      <Button variant="outline" className="min-h-11 w-full whitespace-normal" disabled={blocked || ghostDistance > 6 || (c.torches[me.id] ?? 0) < 1} onClick={() => act("repelGhost")}>👻 Afastar fantasma · 1 🔥</Button>
-      <p className="text-xs text-muted-foreground">Fantasma: casa {c.ghost ?? 28}. Até 6 casas de você, uma tocha o afasta 10 casas.</p>
-      {!near && <p className="text-xs text-muted-foreground">Para acender, fique até 6 casas do próximo altar ou use uma tocha na sua vez.</p>}
+      <div className="grid grid-cols-2 gap-2"><Button disabled={blocked || (c.torches[me.id] ?? 0) < 1 || (c.sanity[me.id] ?? 0) >= 100} variant="outline" className="h-auto min-h-11 whitespace-normal" onClick={() => act("useTorch", { to: me.id })}><Flame />Recuperar +30</Button><Button variant="outline" className="h-auto min-h-11 whitespace-normal" disabled={blocked || ghostDistance > 6 || (c.torches[me.id] ?? 0) < 1} onClick={() => act("repelGhost")}>👻 Afastar · 1 🔥</Button></div>
+      <p role="status" className={`text-xs ${ghostDistance <= 4 ? "text-destructive font-bold" : "text-muted-foreground"}`}>Fantasma · {ghostDistance === 0 ? "na sua casa" : `${ghostDistance} casas de você`} · casa {c.ghost ?? 28}</p>
+      <h3 className="text-xs font-semibold uppercase text-muted-foreground">Iluminar aliado · 1 🔥 · +30 sanidade</h3>
+      <div className="grid grid-cols-3 gap-2">{state.players.filter((p) => p.id !== me.id && !p.out).map((p) => <Button key={p.id} aria-label={`${(c.sanity[p.id] ?? 0) === 0 ? "Resgatar" : "Ajudar"} ${p.name}`} disabled={blocked || (c.torches[me.id] ?? 0) < 1 || (c.sanity[p.id] ?? 0) >= 100} variant="outline" className={`h-auto min-w-0 flex-col gap-1 px-1 py-2 ${(c.sanity[p.id] ?? 0) === 0 ? "border-destructive" : ""}`} onClick={() => act("useTorch", { to: p.id })}><Animal id={p.animal} className="size-9 object-contain" /><span className="max-w-full truncate text-xs">{p.name}</span><span className={(c.sanity[p.id] ?? 0) < 40 ? "text-destructive text-xs" : "text-xs text-muted-foreground"}>{(c.sanity[p.id] ?? 0) === 0 ? "Resgatar" : `${c.sanity[p.id] ?? 0}%`}</span></Button>)}</div>
     </div>}
   </section>;
 }

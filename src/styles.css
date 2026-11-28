@@ -317,6 +317,9 @@
   --board-gap: oklch(0.1 0.008 240);
   --tile-highlight: oklch(0.98 0.005 95 / .13);
   --tile-shadow: oklch(0.04 0.004 240 / .75);
+  --ghost-light: oklch(0.9 0.08 190);
+  --crisis-edge: oklch(0.07 0.015 220 / .6);
+  --sanity-edge: oklch(0.55 0.1 25 / .22);
   --group-0: oklch(0.58 0.08 55);
   --group-1: oklch(0.65 0.15 35);
   --group-2: oklch(0.65 0.13 145);
@@ -371,3 +374,20 @@
 .esquecidos-game .wallet-heading { border-radius: 8px; box-shadow: var(--shadow-soft); }
 .esquecidos-game .wallet-heading > img { height: 76px; right: 6px; bottom: 6px; opacity: .9; }
 .esquecidos-game .wallet-heading > p:last-of-type { max-width: calc(100% - 72px); }
+
+.esquecidos-game .wandering-ghost { position: absolute; z-index: 24; width: 2.1cqw; height: 2.1cqw; margin: -1.05cqw; color: var(--ghost-light); pointer-events: none; }
+.esquecidos-game .wandering-ghost .ghost-token { opacity: 1; fill: var(--background); filter: drop-shadow(0 0 .35cqw var(--ghost-light)); }
+.esquecidos-game .ritual-cleansed { border-color: var(--secondary); box-shadow: inset 0 0 1cqw color-mix(in oklab, var(--secondary) 35%, transparent), 0 0 .5cqw var(--secondary); }
+.esquecidos-game .crisis-center { box-shadow: inset 0 0 4cqw var(--crisis-edge); }
+.esquecidos-game .sanity-meter { height: 6px; border: 0; border-radius: 3px; overflow: hidden; background: var(--muted); accent-color: var(--primary); }
+.esquecidos-game .sanity-meter::-webkit-progress-bar { background: var(--muted); }
+.esquecidos-game .sanity-meter::-webkit-progress-value { background: var(--primary); transition: width .4s; }
+.esquecidos-game .sanity-meter::-moz-progress-bar { background: var(--primary); }
+.esquecidos-game .sanity-low { accent-color: var(--destructive); }
+.esquecidos-game .sanity-low::-webkit-progress-value, .esquecidos-game .sanity-low::-moz-progress-bar { background: var(--destructive); }
+.esquecidos-game .sanity-static { position: fixed; inset: 0; z-index: 40; pointer-events: none; box-shadow: inset 0 0 45px 8px var(--sanity-edge); border: 5px solid transparent; border-image: repeating-linear-gradient(13deg, var(--sanity-edge) 0 2px, transparent 3px 7px) 8; animation: sanity-breathe 5s ease-in-out infinite alternate; }
+@keyframes sanity-breathe { from { opacity: .45; } to { opacity: .8; } }
+@media (prefers-reduced-motion: reduce) {
+  .esquecidos-game .ghost-token, .esquecidos-game .horror-fog::before, .esquecidos-game .horror-fog::after, .esquecidos-game .ritual-target, .esquecidos-game .crisis-center { animation: none; }
+  .esquecidos-game .sanity-static { display: none; }
+}

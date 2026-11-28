@@ -1,5 +1,6 @@
 import { boardFor, buildingName, cityOf, groupTag, HOUSE_MULT, housesAt, isMortgaged, money, ownsGroup, rentFor, startBonus, horrorActive, ritualTarget, type GameState } from "@/lib/game";
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Ghost } from "lucide-react";
 import { Animal } from "./Animal";
 import { usePropertyFlights } from "./usePropertyFlights";
 import type { CSSProperties } from "react";
@@ -16,6 +17,34 @@ function cell(i: number): { r: number; c: number; side: Side } {
   if (i <= L) return { r: R - (i - B), c: 1, side: "left" };
   if (i <= T) return { r: 1, c: 1 + (i - L), side: "top" };
   return { r: 1 + (i - T), c: C, side: "right" };
+}
+
+function ghostPoint(i: number) {
+  const { r, c } = cell(i);
+  // Lower half of each tile avoids the player pins along its upper edge.
+  return {
+    left: `${100 * (CF.slice(0, c - 1).reduce((a, b) => a + b, 0) + (CF[c - 1] ?? 1) * .72) / CF.reduce((a, b) => a + b, 0)}%`,
+    top: `${100 * (RF.slice(0, r - 1).reduce((a, b) => a + b, 0) + (RF[r - 1] ?? 1) * .7) / RF.reduce((a, b) => a + b, 0)}%`,
+  };
+}
+
+function WanderingGhost({ position }: { position: number }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const previous = useRef(position);
+  useEffect(() => {
+    const from = previous.current;
+    previous.current = position;
+    const node = ref.current;
+    if (!node || from === position || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const forward = (position - from + 56) % 56;
+    const steps = forward <= 28 ? forward : 56 - forward;
+    const direction = forward <= 28 ? 1 : -1;
+    // Visit perimeter cells rather than cutting across the center of the TV.
+    const frames = Array.from({ length: steps + 1 }, (_, k) => ghostPoint((from + direction * k + 56) % 56));
+    const animation = node.animate(frames, { duration: Math.min(2400, steps * 180), easing: "linear" });
+    return () => animation.cancel();
+  }, [position]);
+  return <span ref={ref} role="img" aria-label={`Fantasma errante · casa ${position}`} title={`Fantasma · casa ${position}`} className="wandering-ghost" style={ghostPoint(position)}><Ghost className="ghost-token size-full" /></span>;
 }
 
 /** One consistent line-icon set (24px grid, 2px stroke) for every special square. */
@@ -123,12 +152,11 @@ export function Board({ state, center, side, displayPos, focus }: { state: GameS
             <div data-player-tokens className="pointer-events-none absolute inset-x-0 top-[1%] z-20 flex justify-center gap-[0.1cqw]">
               {state.beast === i && <span role="img" aria-label="Onça" className="animate-hop text-[2.2cqw] leading-none drop-shadow">🐆</span>}
               {sq.relic !== undefined && <span role="img" aria-label={relicHolder ? `Relíquia com ${relicHolder.name}` : "Relíquia livre"} className="text-[1.8cqw] leading-none" style={relicHolder ? { filter: `drop-shadow(0 0 0.3cqw ${relicHolder.color})` } : undefined}>💎</span>}
-              {horrorActive(state) && state.curse?.ghost === i && <span role="img" aria-label="Fantasma errante" className="ghost-token text-[2.2cqw] leading-none">👻</span>}
               {here.map((p) => horror ? <span key={`${p.id}-${displayPos[p.id] ?? p.pos}`} title={p.name} className={`player-pin ${p.id === turnId ? "player-pin-active" : ""}`} style={{ "--player-color": p.color } as CSSProperties}><Animal id={p.animal} badge alt={p.name} className="h-[2.3cqw] w-auto" /><span className="player-pin-number">{state.players.indexOf(p) + 1}</span></span> : <Animal key={`${p.id}-${displayPos[p.id] ?? p.pos}`} id={p.animal} badge alt={p.name} className={`animate-hop h-[2.4cqw] w-auto rounded-full ring-1 ring-foreground/40 drop-shadow-[0_2px_2px_color-mix(in_oklab,var(--foreground)_35%,transparent)] ${p.id === turnId ? "scale-110" : "opacity-90"}`} />)}
             </div>
           );
           const ring = focus === i ? "animate-glow z-20 ring-4 ring-secondary ring-offset-2 ring-offset-background" : full ? "monopoly-glow z-10" : "";
-          const base = `${horror ? "horror-tile" : ""} ${horrorActive(state) && ritualTarget(state) === i ? "ritual-target" : ""} ${consumed ? "fog-consumed" : ""} relative overflow-hidden text-left shadow-[0_1px_0_color-mix(in_oklab,var(--foreground)_10%,transparent)] transition-[transform,box-shadow] duration-200 hover:z-20 hover:-translate-y-[0.15cqw] ${ring}`;
+          const base = `${horror ? "horror-tile" : ""} ${horrorActive(state) && state.curse?.altars[i] ? "ritual-cleansed" : ""} ${horrorActive(state) && ritualTarget(state) === i ? "ritual-target" : ""} ${consumed ? "fog-consumed" : ""} relative overflow-hidden text-left shadow-[0_1px_0_color-mix(in_oklab,var(--foreground)_10%,transparent)] transition-[transform,box-shadow] duration-200 hover:z-20 hover:-translate-y-[0.15cqw] ${ring}`;
 
           if (CORNER[i]) {
             const k = CORNER[i]!;
@@ -179,12 +207,13 @@ export function Board({ state, center, side, displayPos, focus }: { state: GameS
             </button>
           );
         })}
-        <div style={{ gridRow: `2 / ${R}`, gridColumn: `2 / ${C}` }} className="filigrana relative grid min-h-0 grid-cols-[1fr_minmax(0,0.85fr)] gap-[1cqw] overflow-hidden rounded-[1cqw] border border-border/10 p-[1cqw]">
+        <div style={{ gridRow: `2 / ${R}`, gridColumn: `2 / ${C}` }} className={`filigrana ${horrorActive(state) ? "crisis-center" : ""} relative grid min-h-0 grid-cols-[1fr_minmax(0,0.85fr)] gap-[1cqw] overflow-hidden rounded-[1cqw] border border-border/10 p-[1cqw]`}>
           <div style={{ containerType: "inline-size" }} className="flex min-h-0 flex-col items-center justify-center gap-[1.5cqw] overflow-hidden text-center">{center}</div>
           {side && <div className="flex min-h-0 flex-col gap-[0.8cqh] overflow-y-auto">{side}</div>}
         </div>
       </div>
       {horrorActive(state) && <div aria-hidden="true" className="horror-fog" />}
+      {horrorActive(state) && <WanderingGhost position={state.curse?.ghost ?? 28} />}
       {picked !== null && <Details state={state} i={picked} onClose={() => setPicked(null)} />}
     </div>
   );

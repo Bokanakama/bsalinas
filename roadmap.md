@@ -66,3 +66,9 @@
 - [x] Reduzir consultas e renderizações redundantes sem mudar regras ou permissões.
 - [x] Otimizar capas, carregamento e trabalho visual recorrente preservando o design.
 - [x] Verificar testes, navegação e partida real em TV/celular; registrar resultados e limites (130 testes; uma consulta/6 s contra quatro; revisão em .lovable/reviews/performance.md).
+
+## Esquecidos: ações rápidas e tensão TV/celular (prompt-29)
+- [x] Simplificar oferendas e resgate por avatares sem alterar regras.
+- [x] Animar o fantasma no perímetro e iluminar altares purificados sem mudar a geometria.
+- [x] Adicionar batimento háptico, baixa sanidade e sussurros opcionais com redução de efeitos.
+- [x] Verificar regras e fluxo compartilhado em TV e quatro celulares (134 testes; crise preparada pelo criador, resgate 0→30 e quatro selos pela UI; áudio reproduzido; chamada de vibração verificada, sensação física não verificável; preferências e tela de 320px).
