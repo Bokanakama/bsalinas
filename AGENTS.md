@@ -45,3 +45,11 @@ use the editor.
 - Esquecidos is a city-gated mid-game crisis in game.ts, never a terminal ritual; master queue ticks persist randomized fog/ghost deadlines and per-player lap baselines for one reversible property pair, ritual cooldowns and property permutations with attached assets, with no hidden roles in participant-visible state — prevents cross-city changes and secret leakage.
 
 - Property flight animations track persisted property identities with DOM snapshots, never move perimeter cells or player coordinates — preserves TV geometry and synchronized rule state.
+
+- Room reads reuse the capability-checked opening snapshot, coalesce doorbells and use adaptive repair polling; never cache private room data across credentials — avoids redundant work without trusting broadcasts.
+- State writes use independent per-room workers with bounded retries and retain dirty snapshots until acknowledged — prevents transient failures from discarding the latest state.
+- Game state and curse layouts are immutable; board selectors cache resolved layouts in a WeakMap — avoids repeated validation without retaining finished rooms.
+- Cover images use CDN-hosted responsive WebP variants, retaining original media for older deployments — reduces transfer without changing artwork.
+
+- Master auction display clocks live in their own component while absolute deadlines resolve on the master queue — clock ticks must not rerender the board.
+- Optional wallet dialogs load lazily with intent prefetch for trade/map — reduces initial gameplay code without removing controls.

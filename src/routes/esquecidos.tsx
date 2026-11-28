@@ -4,7 +4,8 @@ import { ArrowLeft, Dice5, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HorrorRules } from "@/components/HorrorPanel";
 import { createRoom, makeCode } from "@/lib/room";
-import cover from "@/assets/esquecidos-cover.asset.json";
+import cover from "@/assets/esquecidos-cover-1280.asset.json";
+import coverSmall from "@/assets/esquecidos-cover-640.asset.json";
 
 export const Route = createFileRoute("/esquecidos")({
   head: () => ({ meta: [
@@ -14,8 +15,6 @@ export const Route = createFileRoute("/esquecidos")({
     { property: "og:description", content: "Dinheiro, propriedades e uma crise cooperativa contra a névoa, sem encerrar a partida. Um novo mapa de terror psicológico no Banco Boró." },
     { property: "og:type", content: "website" },
     { name: "twitter:card", content: "summary_large_image" },
-    { property: "og:image", content: cover.url },
-    { name: "twitter:image", content: cover.url },
   ] }),
   component: ForgottenLobby,
 });
@@ -38,7 +37,7 @@ function ForgottenLobby() {
   }
   return <main className="esquecidos-game min-h-dvh bg-background text-foreground">
     <header className="relative flex min-h-72 items-end overflow-hidden sm:min-h-96">
-      <img src={cover.url} alt="Cidade abandonada em miniatura, torre do relógio e altares acesos entre casas esquecidas" className="absolute inset-0 size-full object-cover" fetchPriority="high" />
+      <img src={cover.url} srcSet={`${coverSmall.url} 640w, ${cover.url} 1280w`} sizes="100vw" decoding="async" alt="Cidade abandonada em miniatura, torre do relógio e altares acesos entre casas esquecidas" className="absolute inset-0 size-full object-cover" fetchPriority="high" />
       <div className="absolute inset-0 bg-background/55" />
       <div className="relative mx-auto w-full max-w-4xl px-5 py-7"><Link to="/" className="mb-6 inline-flex min-h-11 items-center gap-2 text-sm font-semibold"><ArrowLeft className="size-4" />Banco Boró</Link><p className="mb-2 text-xs font-bold uppercase text-secondary">Boró · terror psicológico · 2 a 6 jogadores</p><h1 className="font-display text-4xl sm:text-5xl">Cidade dos Esquecidos</h1><p className="mt-3 max-w-lg text-sm leading-relaxed">A cidade vende imóveis. Mas não permite que seus moradores partam.</p></div>
     </header>

@@ -60,3 +60,9 @@
 - [x] Melhorar contraste e distinguir personagens sem mudar a geometria.
 - [x] Ocultar missão concluída e trocar pares após todos passarem no Início, com retorno animado.
 - [x] Narrar Gazeta de B$400 e verificar regras e partida (120 testes; TV e celular; reprodução de áudio confirmada).
+
+## Otimização de desempenho (prompt-28)
+- [x] Analisar navegação, sincronização, imagens, animações, código e medições reais antes de alterar a aplicação.
+- [x] Reduzir consultas e renderizações redundantes sem mudar regras ou permissões.
+- [x] Otimizar capas, carregamento e trabalho visual recorrente preservando o design.
+- [x] Verificar testes, navegação e partida real em TV/celular; registrar resultados e limites (130 testes; uma consulta/6 s contra quatro; revisão em .lovable/reviews/performance.md).

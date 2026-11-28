@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { publishState, joinRoomChannel, ensureRoomAccess, accessRoom } from "@/lib/room";
+import { publishState, joinRoomChannel, openRoom, accessRoom } from "@/lib/room";
+import { createRefreshQueue, roomPollMs } from "@/lib/room-sync";
 import * as G from "@/lib/game";
 import { SelvaRulesButton } from "@/components/SelvaGuide";
 import { CurseReveal, HorrorPanel, HorrorRulesButton } from "@/components/HorrorPanel";
@@ -11,7 +12,8 @@ import { DicePair } from "@/components/Dice";
 import { music, sfx, voice, type VoiceClip } from "@/lib/sfx";
 import { Animal } from "@/components/Animal";
 import { TransferShow } from "@/components/TransferShow";
-import { Gazette, RelicTracker, MoneyRain, ScratchingBanner, TitleInfo } from "@/components/GameInfo";
+import { Gazette, RelicTracker, MoneyRain, ScratchingBanner } from "@/components/GameInfo";
+import { MasterAuction } from "@/components/MasterAuction";
 import { paymentText } from "@/lib/payment-text";
 
 export const Route = createFileRoute("/mestre/$code")({
@@ -42,11 +44,12 @@ function Master() {
   const voiceRef = useRef(true);
   voiceRef.current = voiceOn;
   const [song, setSong] = useState(false);
-  const [now, setNow] = useState(0);
-  useEffect(() => () => music.stop(), []);
+  useEffect(() => () => { music.stop(); voice.stop(); }, []);
   const [reactions, setReactions] = useState<{ id: string; emoji: string; name: string; color: string; x: number }[]>([]);
   const ref = useRef<G.GameState | null>(null);
   const seen = useRef(new Set<string>());
+  const queued = useRef(new Set<string>());
+  const generation = useRef(0);
   const queue = useRef(Promise.resolve());
 
   const commit = useCallback((next: G.GameState) => {
@@ -57,7 +60,8 @@ function Master() {
 
   const handle = useCallback(async (a: ActionRow) => {
     if (seen.current.has(a.id) || !ref.current) return;
-    seen.current.add(a.id);
+    if (!a.id.startsWith("host-")) seen.current.add(a.id);
+    const epoch = generation.current;
     let s: G.GameState = { ...ref.current, lastActionAt: a.created_at || ref.current.lastActionAt };
     const p = a.payload;
     switch (a.type) {
@@ -113,18 +117,23 @@ function Master() {
           voice.play(dn >= 2 ? "dupla2" : "dupla1");
         }
         await new Promise((r) => setTimeout(r, 700));
+        if (epoch !== generation.current) return;
         const from = before.players.find((x) => x.id === a.player_id)!.pos;
         setFocus(from);
         await new Promise((r) => setTimeout(r, 250));
+        if (epoch !== generation.current) return;
         for (let k = 1; k <= d1 + d2; k++) {
           setDisplayPos((d) => ({ ...d, [a.player_id]: (from + k) % G.boardFor(s).length }));
           
           sfx.step();
           await new Promise((r) => setTimeout(r, 90));
+          if (epoch !== generation.current) return;
         }
         await new Promise((r) => setTimeout(r, 400));
+        if (epoch !== generation.current) return;
         setFocus(null);
         await new Promise((r) => setTimeout(r, 150));
+        if (epoch !== generation.current) return;
         if (!ref.current) return;
         s = G.land(ref.current, crypto.randomUUID());
         { const sq = G.boardFor(s)[s.players.find((x) => x.id === a.player_id)?.pos ?? 0]; if (sq?.group === 8) sfx.trainWhistle(); else if (sq?.kind === "rest" || sq?.name.includes("Cafezinho")) sfx.coffeeCup(); }
@@ -134,17 +143,34 @@ function Master() {
     commit(s);
   }, [commit]);
 
-  const enqueue = useCallback((a: ActionRow) => { queue.current = queue.current.then(() => handle(a)).catch(console.error); }, [handle]);
+  const enqueue = useCallback((a: ActionRow) => {
+    if (seen.current.has(a.id) || queued.current.has(a.id)) return;
+    queued.current.add(a.id);
+    const epoch = generation.current;
+    queue.current = queue.current.then(() => {
+      if (epoch === generation.current) return handle(a);
+      return undefined;
+    }).catch(console.error).finally(() => queued.current.delete(a.id));
+  }, [handle]);
 
   useEffect(() => {
     setOrigin(window.location.origin);
-    let alive = true, fetching = false;
+    generation.current++;
+    seen.current.clear(); queued.current.clear(); ref.current = null;
+    setState(null); setMissing(false);
+    let alive = true, live = false, lastRead = 0;
     let room: ReturnType<typeof joinRoomChannel> | undefined;
+    const reads = createRefreshQueue(async () => {
+      if (!alive || !ref.current) return;
+      const since = ref.current.lastActionAt;
+      const backlog = await accessRoom(code, "actions", since ? { since } : {}, true) as unknown as ActionRow[];
+      if (alive) backlog?.forEach((a) => { if (!seen.current.has(a.id)) enqueue(a); });
+      lastRead = Date.now();
+    });
     (async () => {
-      if (!await ensureRoomAccess(code, true)) { if (alive) setMissing(true); return; }
+      const data = await openRoom(code, true);
       if (!alive) return;
-      const data = await accessRoom(code, "read", {}, true) as { state: G.GameState } | null;
-      if (!data) return setMissing(true);
+      if (!data) { setMissing(true); return; }
       let s = G.resumeLegacyHorror(data.state, Date.now());
       if (s !== data.state) commit(s);
       if (s.cityEvent?.kind === "padroeira" && s.cityEvent.expiresAt === undefined) {
@@ -155,22 +181,19 @@ function Master() {
       ref.current = s; setState(s);
       setDisplayPos(Object.fromEntries(s.players.map((p) => [p.id, p.pos])));
       room = joinRoomChannel(code);
-      room.ch.on("broadcast", { event: "player_action" }, () => void catchUp());
-      room.subscribe(() => void catchUp());
-      await catchUp();
+      room.ch.on("broadcast", { event: "player_action" }, () => void reads.refresh());
+      let subscribed = false;
+      room.subscribe((connected) => {
+        live = connected;
+        if (connected && subscribed) void reads.refresh();
+        if (connected) subscribed = true;
+      });
+      await reads.refresh();
     })().catch(() => { if (alive) setMissing(true); });
-    async function catchUp() {
-      if (!alive || fetching || !ref.current) return;
-      fetching = true;
-      try {
-        const since = ref.current.lastActionAt;
-        const backlog = await accessRoom(code, "actions", since ? { since } : {}, true) as unknown as ActionRow[];
-        if (alive) backlog?.forEach((a) => { if (!seen.current.has(a.id)) enqueue(a); });
-      } catch { /* Retry on the next poll after an interrupted connection. */ }
-      finally { fetching = false; }
-    }
-    const poll = setInterval(() => { if (ref.current) void catchUp(); }, 1500);
-    return () => { alive = false; clearInterval(poll); room?.leave(); };
+    const poll = setInterval(() => { if (ref.current && Date.now() - lastRead >= roomPollMs(live)) void reads.refresh(); }, 1500);
+    const wake = () => { if (ref.current) void reads.refresh(); };
+    window.addEventListener("online", wake); window.addEventListener("focus", wake);
+    return () => { alive = false; generation.current++; reads.stop(); clearInterval(poll); window.removeEventListener("online", wake); window.removeEventListener("focus", wake); room?.leave(); };
   }, [code, enqueue, commit]);
 
   // The master persists the same expiry for every device, even between turns.
@@ -194,13 +217,15 @@ function Master() {
   const auctionEnds = state?.pending?.kind === "auction" ? state.pending.endsAt : 0;
   useEffect(() => {
     if (!auctionEnds) return;
-    const t = setInterval(() => {
-      setNow(Date.now());
-      if (Date.now() >= (ref.current?.pending?.kind === "auction" ? ref.current.pending.endsAt : Infinity)) {
-        queue.current = queue.current.then(() => { const n = G.closeAuction(ref.current!); if (n !== ref.current) commit(n); });
-      }
-    }, 250);
-    return () => clearInterval(t);
+    const t = setTimeout(() => {
+      queue.current = queue.current.then(() => {
+        const current = ref.current;
+        if (!current) return;
+        const next = G.closeAuction(current);
+        if (next !== current) commit(next);
+      });
+    }, Math.max(0, auctionEnds - Date.now()));
+    return () => clearTimeout(t);
   }, [auctionEnds, commit]);
 
   // Raspadinha: if the player never finishes scratching, reveal it automatically.
@@ -280,7 +305,10 @@ function Master() {
 
   // keep tokens in sync with state when not animating
   useEffect(() => {
-    if (state && !state.moving) setDisplayPos(Object.fromEntries(state.players.map((p) => [p.id, p.pos])));
+    if (state && !state.moving) setDisplayPos((previous) => {
+      if (Object.keys(previous).length === state.players.length && state.players.every((p) => previous[p.id] === p.pos)) return previous;
+      return Object.fromEntries(state.players.map((p) => [p.id, p.pos]));
+    });
   }, [state]);
 
   // Impact sounds: Onça moving/biting, and heavy rent/fees.
@@ -290,7 +318,11 @@ function Master() {
   const trId = state?.transfer?.id;
   useEffect(() => {
     const t = state?.transfer;
-    if (t && t.amount >= G.BIG_HIT && t.from !== G.BANK) setTimeout(() => sfx.alarm(), 400);
+    if (t && t.amount >= G.BIG_HIT && t.from !== G.BANK) {
+      const timer = setTimeout(() => sfx.alarm(), 400);
+      return () => clearTimeout(timer);
+    }
+    return undefined;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trId]);
 
@@ -398,13 +430,7 @@ function Master() {
           </div>
         )}
         {pd?.kind === "auction" && (
-          <div className={`animate-pop rounded-xl border-4 px-4 py-2 font-display ${pd.endsAt - now <= 5000 && now > 0 ? "animate-pulse border-destructive bg-secondary ring-4 ring-destructive" : "border-border bg-secondary"}`}>
-            <p className="text-[3.6cqw] uppercase">{pd.endsAt - now <= 5000 && now > 0 ? "🔥 Últimos segundos! · " : ""}Leilão · vez de {nameOf(G.auctionTurn(state) ?? "")} · {Math.max(0, Math.ceil((pd.endsAt - now) / 1000))}s</p>
-            <p className="text-[5.8cqw] leading-tight">{G.boardFor(state)[pd.square]!.name}</p>
-            <p className="text-[4.3cqw]">{pd.bidder ? `${nameOf(pd.bidder)} · ${G.money(pd.bid)}` : "Sem lances ainda"} · Tabela {G.money(G.boardFor(state)[pd.square]!.price!)}</p>
-            <TitleInfo state={state} square={pd.square} big />
-            <button onClick={() => { if (window.confirm(pd.bidder ? `Encerrar o leilão agora? ${nameOf(pd.bidder)} leva por ${G.money(pd.bid)}.` : "Encerrar o leilão sem vencedor?")) hostAct("dismissAuction"); }} className="mt-1 rounded-lg border-2 border-border bg-card px-3 py-0.5 text-[2.6cqw]">⏹️ Dispensar leilão</button>
-          </div>
+          <MasterAuction state={state} onDismiss={() => hostAct("dismissAuction")} />
         )}
         {state.offer && (
           <p className="rounded-lg border-2 border-border bg-card px-3 py-1 text-[3.2cqw] font-bold">🤝 Proposta na mesa: {G.offerText(state, state.offer)} — aguardando {state.players.find((x) => x.id === state.offer!.to)?.name}</p>

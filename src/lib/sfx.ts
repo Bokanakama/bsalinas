@@ -20,6 +20,7 @@ function tone(freq: number, dur: number, type: OscillatorType = "square", delay 
   g.gain.setValueAtTime(vol, t);
   g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
   o.connect(g).connect(a.destination);
+  o.onended = () => { o.disconnect(); g.disconnect(); };
   o.start(t);
   o.stop(t + dur);
 }
@@ -67,9 +68,10 @@ export const voice = {
     if (typeof window === "undefined") return;
     current?.pause();
     const urls: Partial<Record<VoiceClip, string>> = { esquecidos_despertar: curseVoice.url, esquecidos_padroeira: padroeiraVoice.url, esquecidos_feriado: feriadoVoice.url, esquecidos_temporal: temporalVoice.url };
-    current = new Audio(urls[clip] ?? `/audio/${clip}.mp3`);
+    current ??= new Audio();
+    current.src = urls[clip] ?? `/audio/${clip}.mp3`;
     current.volume = 0.8;
     void current.play().catch(() => {});
   },
-  stop() { current?.pause(); current = null; },
+  stop() { if (current) { current.pause(); current.removeAttribute("src"); current.load(); current = null; } },
 };

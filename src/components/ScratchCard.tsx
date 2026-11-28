@@ -14,11 +14,13 @@ export function ScratchCard({ text, good, onDone, onReveal }: { text: string; go
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
   const last = useRef(0);
   const strokes = useRef(0);
+  const lastCoverage = useRef(0);
 
   useEffect(() => {
     const c = cv.current;
     if (!c) return;
-    const ctx = c.getContext("2d")!;
+    const ctx = c.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return;
     const css = getComputedStyle(document.documentElement);
     ctx.fillStyle = css.getPropertyValue("--muted-foreground") || "gray";
     ctx.fillRect(0, 0, c.width, c.height);
@@ -32,16 +34,19 @@ export function ScratchCard({ text, good, onDone, onReveal }: { text: string; go
 
   const scratch = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!drawing.current || open) return;
-    const c = cv.current!;
+    const c = cv.current;
+    if (!c) return;
     const r = c.getBoundingClientRect();
-    const ctx = c.getContext("2d")!;
+    const ctx = c.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return;
     ctx.globalCompositeOperation = "destination-out";
     ctx.beginPath();
     ctx.arc(((e.clientX - r.left) / r.width) * c.width, ((e.clientY - r.top) / r.height) * c.height, 22, 0, Math.PI * 2);
     ctx.fill();
     const t = Date.now();
     if (t - last.current > 90) { last.current = t; sfx.scratch(); }
-    if (++strokes.current % 6 === 0) {
+    if (++strokes.current % 6 === 0 && t - lastCoverage.current >= 100) {
+      lastCoverage.current = t;
       const d = ctx.getImageData(0, 0, c.width, c.height).data;
       let clear = 0;
       for (let i = 3; i < d.length; i += 64) if (d[i] === 0) clear++;

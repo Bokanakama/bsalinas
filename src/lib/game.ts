@@ -130,11 +130,17 @@ export const LUCK_CARDS: LuckCard[] = [
 ];
 
 export const cityOf = (s?: Pick<GameState, "city">): CityId => s?.city === "boro" || s?.city === "selva" || s?.city === "esquecidos" ? s.city : "salinas";
+const resolvedBoards = new WeakMap<number[], Square[]>();
 export function boardFor(s?: Pick<GameState, "city"> & Partial<Pick<GameState, "curse">>): Square[] {
   const base = ({ salinas: BOARD, boro: BORO_BOARD, selva: SELVA_BOARD, esquecidos: ESQUECIDOS_BOARD })[cityOf(s)];
   const layout = s?.curse?.layout;
-  if (cityOf(s) !== "esquecidos" || !layout || layout.length !== base.length || new Set(layout).size !== base.length || !layout.every((source, i) => Number.isInteger(source) && base[source] && (source === i || (base[source]?.kind === "property" && base[i]?.kind === "property")))) return base;
-  return layout.map((source, i) => base[source] ?? base[i] ?? { name: "", kind: "rest" });
+  if (cityOf(s) !== "esquecidos" || !layout) return base;
+  const cached = resolvedBoards.get(layout);
+  if (cached) return cached;
+  const valid = layout.length === base.length && new Set(layout).size === base.length && layout.every((source, i) => Number.isInteger(source) && base[source] && (source === i || (base[source]?.kind === "property" && base[i]?.kind === "property")));
+  const board = valid ? layout.map((source, i) => base[source] ?? base[i] ?? { name: "", kind: "rest" as const }) : base;
+  resolvedBoards.set(layout, board);
+  return board;
 }
 export const cardsFor = (s: GameState) => ({ salinas: LUCK_CARDS, boro: BORO_CARDS, selva: SELVA_CARDS, esquecidos: ESQUECIDOS_CARDS })[cityOf(s)];
 export const eventsFor = (s: GameState) => ({ salinas: CITY_EVENTS, boro: BORO_EVENTS, selva: SELVA_EVENTS, esquecidos: ESQUECIDOS_EVENTS })[cityOf(s)];

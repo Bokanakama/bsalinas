@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { newState, type CityId, type GameState } from "./game";
 import { roomRequest } from "./room.functions";
+import { createRefreshQueue, createStateWriter, roomPollMs } from "./room-sync";
 
 export function makeCode() {
   const L = "ABCDEFGHJKLMNPQRSTUVWXYZ";
@@ -24,27 +25,32 @@ export function setPlayerId(id: string) {
 
 // Credentials are issued by the server and scoped to one room and role.
 const channels = new Map<string, string>();
-const pendingAccess = new Map<string, Promise<boolean>>();
-export async function ensureRoomAccess(code: string, master = false) {
+export type RoomSnapshot = { channel: string; state: GameState; updated_at: string };
+const pendingAccess = new Map<string, Promise<RoomSnapshot | null>>();
+export async function openRoom(code: string, master = false): Promise<RoomSnapshot | null> {
   const key = `boro-access-${code}-${master ? "master" : "player"}`;
-  if (pendingAccess.has(key)) return pendingAccess.get(key)!;
+  const pending = pendingAccess.get(key);
+  if (pending) return pending;
   const task = (async () => {
     let token = localStorage.getItem(key);
-    if (!token && master) return false;
+    if (!token && master) return null;
     if (!token) {
       const response = await roomRequest({ data: { op: "join", code } });
-      if (!response.token) return false;
+      if (!response.token) return null;
       token = response.token;
       localStorage.setItem(key, token);
     }
     const response = await roomRequest({ data: { op: "read", code, token } });
-    const row = response.result as { channel?: string } | null;
-    if (!row?.channel) return false;
+    const row = response.result as RoomSnapshot | null;
+    if (!row?.channel) return null;
     channels.set(code, row.channel);
-    return true;
-  })().catch(() => false).finally(() => pendingAccess.delete(key));
+    return row;
+  })().catch(() => null).finally(() => pendingAccess.delete(key));
   pendingAccess.set(key, task);
   return task;
+}
+export async function ensureRoomAccess(code: string, master = false) {
+  return !!await openRoom(code, master);
 }
 export async function createRoom(code: string, city: CityId = "salinas") {
   const response = await roomRequest({ data: { op: "create", code } });
@@ -58,21 +64,10 @@ export async function accessRoom(code: string, op: "read" | "write" | "actions" 
   return (await roomRequest({ data: { op, code, token, payload } })).result;
 }
 
-// Saves are chained so an older state can never land after a newer one; bursts collapse to the latest.
-let saving: Promise<void> = Promise.resolve();
-const latest = new Map<string, GameState>();
-export function saveState(code: string, state: GameState) {
-  const first = !latest.has(code);
-  latest.set(code, state);
-  if (!first) return saving;
-  saving = saving.catch(() => {}).then(async () => {
-    const s = latest.get(code)!;
-    latest.delete(code);
-    await accessRoom(code, "write", { state: s }, true);
-    broadcast(code, "room_state", {});
-  });
-  return saving;
-}
+export const saveState = createStateWriter<GameState>(async (code, state) => {
+  await accessRoom(code, "write", { state }, true);
+  broadcast(code, "room_state", {});
+});
 export function publishState(code: string, state: GameState) {
   return saveState(code, state);
 }
@@ -121,35 +116,42 @@ export function useRoomState(code: string) {
   const [state, setState] = useState<GameState | null>(null);
   const [missing, setMissing] = useState(false);
   useEffect(() => {
-    let alive = true, fetching = false;
+    let alive = true, live = false, lastRead = 0;
     let stamp = "";
     let room: ReturnType<typeof joinRoomChannel> | undefined;
-    const refetch = async () => {
-      if (fetching || !alive) return;
-      fetching = true;
-      try {
-        const data = await accessRoom(code, "read") as { state: GameState; updated_at: string } | null;
-        if (!alive) return;
-        if (!data) { setMissing(true); return; }
-        if (data.updated_at >= stamp) { stamp = data.updated_at; setState(data.state); }
-      } catch { /* Keep the last confirmed state while offline. */ }
-      finally { fetching = false; }
-    };
-    void (async () => {
-      if (!await ensureRoomAccess(code)) { if (alive) setMissing(true); return; }
+    setState(null); setMissing(false);
+    const apply = (data: RoomSnapshot | null) => {
       if (!alive) return;
+      if (!data) { setMissing(true); return; }
+      if (data.updated_at > stamp) { stamp = data.updated_at; setMissing(false); setState(data.state); }
+    };
+    const reads = createRefreshQueue(async () => {
+      if (!alive) return;
+      apply(await accessRoom(code, "read") as RoomSnapshot | null);
+      lastRead = Date.now();
+    });
+    void (async () => {
+      const initial = await openRoom(code);
+      if (!initial) { if (alive) setMissing(true); return; }
+      if (!alive) return;
+      apply(initial); lastRead = Date.now();
       room = joinRoomChannel(code);
-      room.ch.on("broadcast", { event: "room_state" }, () => void refetch());
-      room.subscribe(() => void refetch());
-      await refetch();
+      room.ch.on("broadcast", { event: "room_state" }, () => void reads.refresh());
+      let subscribed = false;
+      room.subscribe((connected) => {
+        live = connected;
+        if (connected && (subscribed || Date.now() - lastRead > 10000)) void reads.refresh();
+        if (connected) subscribed = true;
+      });
     })();
-    const poll = setInterval(() => { if (document.visibilityState === "visible" && channels.has(code)) void refetch(); }, 1500);
-    const wake = () => { if (document.visibilityState === "visible" && channels.has(code)) void refetch(); };
+    const poll = setInterval(() => { if (document.visibilityState === "visible" && room && Date.now() - lastRead >= roomPollMs(live)) void reads.refresh(); }, 1500);
+    const wake = () => { if (document.visibilityState === "visible" && room) void reads.refresh(); };
     document.addEventListener("visibilitychange", wake);
     window.addEventListener("online", wake);
     window.addEventListener("focus", wake);
     return () => {
       alive = false;
+      reads.stop();
       clearInterval(poll);
       document.removeEventListener("visibilitychange", wake);
       window.removeEventListener("online", wake);

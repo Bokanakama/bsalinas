@@ -7,17 +7,19 @@ export function usePropertyFlights(layoutKey: string, enabled: boolean) {
   useLayoutEffect(() => {
     const board = ref.current;
     if (!board || !enabled) { previous.current.clear(); return; }
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { previous.current.clear(); return; }
     const bounds = board.getBoundingClientRect();
     const next = new Map<string, { rect: DOMRect; clone: HTMLElement }>();
     const cleanup: (() => void)[] = [];
-    board.querySelectorAll<HTMLElement>("[data-property-id]").forEach((node) => {
+    // Read every rectangle before any DOM write, avoiding repeated layout flushes.
+    const snapshots = Array.from(board.querySelectorAll<HTMLElement>("[data-property-id]")).map((node) => ({ node, rect: node.getBoundingClientRect() }));
+    snapshots.forEach(({ node, rect }) => {
       const id = node.dataset["propertyId"];
       if (!id) return;
-      const rect = node.getBoundingClientRect();
       const clone = node.cloneNode(true) as HTMLElement;
       next.set(id, { rect, clone });
       const old = previous.current.get(id);
-      if (!old || (old.rect.x === rect.x && old.rect.y === rect.y) || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      if (!old || (old.rect.x === rect.x && old.rect.y === rect.y)) return;
       const flight = old.clone;
       flight.removeAttribute("data-property-id");
       flight.querySelectorAll("[data-player-tokens]").forEach((tokens) => tokens.remove());

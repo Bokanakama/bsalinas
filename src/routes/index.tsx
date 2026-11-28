@@ -1,10 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, Building2, Dice5, MapPin, Trees, Waves } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
-import cidadeboroCover from "@/assets/joga-brasil-cidadeboro.jpg";
-import selvaCover from "@/assets/selva-cover.jpg";
-import forgottenCover from "@/assets/esquecidos-cover.asset.json";
-import salinasCover from "@/assets/joga-brasil-salinas.jpg";
+import cidadeboroCover from "@/assets/boro-cover-1280.asset.json";
+import cidadeboroSmall from "@/assets/boro-cover-640.asset.json";
+import selvaCover from "@/assets/selva-cover-1280.asset.json";
+import selvaSmall from "@/assets/selva-cover-640.asset.json";
+import forgottenCover from "@/assets/esquecidos-cover-1280.asset.json";
+import forgottenSmall from "@/assets/esquecidos-cover-640.asset.json";
+import salinasCover from "@/assets/salinas-cover-1280.asset.json";
+import salinasSmall from "@/assets/salinas-cover-640.asset.json";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -39,7 +43,7 @@ function Home() {
             className="city-destination group block min-w-0 overflow-hidden rounded-2xl border border-border bg-card text-card-foreground"
           >
             <div className="relative aspect-[16/9] overflow-hidden bg-muted">
-              <img src={cidadeboroCover} alt="Cidade ilustrada com casinhas coloridas, uma praça e peças de tabuleiro" width={1152} height={768} fetchPriority="high" className="h-full w-full object-cover transition-transform duration-500 motion-safe:group-hover:scale-105" />
+              <img src={cidadeboroCover.url} srcSet={`${cidadeboroSmall.url} 640w, ${cidadeboroCover.url} 1280w`} sizes="(min-width: 1024px) 500px, (min-width: 768px) 46vw, 92vw" decoding="async" alt="Cidade ilustrada com casinhas coloridas, uma praça e peças de tabuleiro" width={1152} height={768} fetchPriority="high" className="h-full w-full object-cover transition-transform duration-500 motion-safe:group-hover:scale-105" />
               <span className="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-lg bg-card/95 px-3 py-1.5 text-xs font-semibold text-primary"><Building2 className="size-3.5" aria-hidden="true" />CidadeBoró</span>
             </div>
             <div className="p-5 sm:p-6">
@@ -54,7 +58,7 @@ function Home() {
             className="city-destination city-destination-coast group block min-w-0 overflow-hidden rounded-2xl border border-border bg-card text-card-foreground"
           >
             <div className="relative aspect-[16/9] overflow-hidden bg-muted">
-              <img src={salinasCover} alt="Praia de Salinas ilustrada com mar azul, coqueiros e quiosques coloridos" width={1152} height={768} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 motion-safe:group-hover:scale-105" />
+              <img src={salinasCover.url} srcSet={`${salinasSmall.url} 640w, ${salinasCover.url} 1280w`} sizes="(min-width: 1024px) 500px, (min-width: 768px) 46vw, 92vw" decoding="async" alt="Praia de Salinas ilustrada com mar azul, coqueiros e quiosques coloridos" width={1152} height={768} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 motion-safe:group-hover:scale-105" />
               <span className="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-lg bg-card/95 px-3 py-1.5 text-xs font-semibold text-primary"><MapPin className="size-3.5" aria-hidden="true" />Salinópolis · PA</span>
             </div>
             <div className="p-5 sm:p-6">
@@ -69,7 +73,7 @@ function Home() {
             className="city-destination group block min-w-0 overflow-hidden rounded-2xl border border-border bg-card text-card-foreground"
           >
             <div className="relative aspect-[16/9] overflow-hidden bg-muted ">
-              <img src={selvaCover} alt="Selva com ruínas de templo, tambores, uma onça e uma joia verde" width={1536} height={1024} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 motion-safe:group-hover:scale-105" />
+              <img src={selvaCover.url} srcSet={`${selvaSmall.url} 640w, ${selvaCover.url} 1280w`} sizes="(min-width: 1024px) 500px, (min-width: 768px) 46vw, 92vw" decoding="async" alt="Selva com ruínas de templo, tambores, uma onça e uma joia verde" width={1536} height={1024} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 motion-safe:group-hover:scale-105" />
               <span className="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-lg bg-card/95 px-3 py-1.5 text-xs font-semibold text-primary"><Trees className="size-3.5" aria-hidden="true" />Novo · Aventura</span>
             </div>
             <div className="p-5 sm:p-6">
@@ -80,7 +84,7 @@ function Home() {
           </Link>
           <Link to="/esquecidos" aria-label="Jogar Cidade dos Esquecidos" className="esquecidos-game city-destination group block min-w-0 overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
             <div className="relative aspect-[16/9] overflow-hidden bg-muted">
-              <img src={forgottenCover.url} alt="Cidade abandonada em miniatura, relógio parado e altares entre casas cobertas por névoa" loading="lazy" className="h-full w-full object-cover transition-transform duration-500 motion-safe:group-hover:scale-105" />
+              <img src={forgottenCover.url} srcSet={`${forgottenSmall.url} 640w, ${forgottenCover.url} 1280w`} sizes="(min-width: 1024px) 500px, (min-width: 768px) 46vw, 92vw" decoding="async" alt="Cidade abandonada em miniatura, relógio parado e altares entre casas cobertas por névoa" loading="lazy" className="h-full w-full object-cover transition-transform duration-500 motion-safe:group-hover:scale-105" />
               <span className="absolute left-4 top-4 rounded-lg bg-card/95 px-3 py-1.5 text-xs font-semibold text-secondary">Novo · Mistério cooperativo</span>
             </div>
             <div className="p-5 sm:p-6"><h2 className="font-display text-3xl">Cidade dos Esquecidos</h2><p className="mt-2 min-h-12 text-base leading-6 text-muted-foreground">Negocie de dia. Quebre a maldição para escapar à noite.</p><span className={buttonVariants({ className: "mt-5 h-12 w-full justify-between rounded-xl px-4 text-sm font-bold group-hover:bg-primary/90" })} aria-hidden="true">ENTRAR NOS ESQUECIDOS<ArrowRight className="size-5" /></span></div>

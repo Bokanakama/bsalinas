@@ -3,7 +3,8 @@ import { useState } from "react";
 import { ArrowLeft, Dice5, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createRoom, makeCode } from "@/lib/room";
-import cover from "@/assets/joga-brasil-cidadeboro.jpg";
+import cover from "@/assets/boro-cover-1280.asset.json";
+import coverSmall from "@/assets/boro-cover-640.asset.json";
 
 export const Route = createFileRoute("/boro")({
   head: () => ({ meta: [
@@ -41,7 +42,7 @@ function BoroLobby() {
   return (
     <main className="boro-game min-h-dvh bg-background text-foreground">
       <header className="relative flex min-h-64 items-end overflow-hidden sm:min-h-80">
-        <img src={cover} alt="Praça e casinhas coloridas de Cidade Boró" className="absolute inset-0 h-full w-full object-cover" fetchPriority="high" />
+        <img src={cover.url} srcSet={`${coverSmall.url} 640w, ${cover.url} 1280w`} sizes="100vw" decoding="async" alt="Praça e casinhas coloridas de Cidade Boró" className="absolute inset-0 h-full w-full object-cover" fetchPriority="high" />
         <div className="absolute inset-0 bg-foreground/35" />
         <div className="relative mx-auto w-full max-w-3xl px-5 py-6 text-primary-foreground">
           <Link to="/" className="mb-6 inline-flex min-h-11 items-center gap-2 font-semibold"><ArrowLeft className="size-4" />Banco Boró</Link>

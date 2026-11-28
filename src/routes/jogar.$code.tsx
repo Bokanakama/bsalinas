@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useCallback, useEffect, useRef, useState, type ReactNode, type CSSProperties } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode, type CSSProperties } from "react";
 import { getPlayerId, sendAction, setPlayerId, useRoomState } from "@/lib/room";
 import * as G from "@/lib/game";
 import { DicePair } from "@/components/Dice";
@@ -9,14 +9,17 @@ import { Animal } from "@/components/Animal";
 import { TransferShow } from "@/components/TransferShow";
 import { sfx } from "@/lib/sfx";
 import { StreetStrip } from "@/components/StreetStrip";
-import { PropertyDetails } from "@/components/PropertyDetails";
-import { TradeTable } from "@/components/TradeTable";
-import { ScratchCard } from "@/components/ScratchCard";
 import { Gazette, RelicTracker, MoneyRain, ScratchingBanner, TitleInfo } from "@/components/GameInfo";
 import { SelvaIntro, SelvaRulesButton } from "@/components/SelvaGuide";
-import { MiniMap } from "@/components/MiniMap";
 import { CurseReveal, HorrorPanel, HorrorRulesButton } from "@/components/HorrorPanel";
 import { UpdateNotes } from "@/components/UpdateNotes";
+
+const loadTrade = () => import("@/components/TradeTable");
+const loadMap = () => import("@/components/MiniMap");
+const TradeTable = lazy(() => loadTrade().then((m) => ({ default: m.TradeTable })));
+const MiniMap = lazy(() => loadMap().then((m) => ({ default: m.MiniMap })));
+const PropertyDetails = lazy(() => import("@/components/PropertyDetails").then((m) => ({ default: m.PropertyDetails })));
+const ScratchCard = lazy(() => import("@/components/ScratchCard").then((m) => ({ default: m.ScratchCard })));
 
 export const Route = createFileRoute("/jogar/$code")({
   head: ({ params }) => ({
@@ -342,12 +345,13 @@ function Wallet() {
 
 
       {state.phase === "playing" && !me.out && state.players.filter((p) => !p.out).length > 1 && (
-        <button disabled={!!state.offer} onClick={() => setTrade({})} className={`${btn} w-full bg-accent text-accent-foreground`}>🤝 Negociar</button>
+        <button disabled={!!state.offer} onPointerEnter={() => void loadTrade()} onFocus={() => void loadTrade()} onClick={() => setTrade({})} className={`${btn} w-full bg-accent text-accent-foreground`}>🤝 Negociar</button>
       )}
       {mine.length > 0 && <Neighborhoods state={state} pid={pid} balance={me.balance} act={act} onInspect={setInspect} onSell={(i) => setTrade({ give: [i] })} onTrade={(to) => !state.offer && state.phase === "playing" && setTrade({ to })} />}
 
       {state.phase !== "lobby" && !me.out && <StreetStrip state={state} playerId={pid} onPick={setInspect} />}
-      {state.phase !== "lobby" && <button onClick={() => setMap(true)} className="mx-auto min-h-12 rounded-xl px-3 text-sm font-bold text-primary underline underline-offset-4">🗺️ Ver Tabuleiro Completo</button>}
+      {state.phase !== "lobby" && <button onPointerEnter={() => void loadMap()} onFocus={() => void loadMap()} onClick={() => setMap(true)} className="mx-auto min-h-12 rounded-xl px-3 text-sm font-bold text-primary underline underline-offset-4">🗺️ Ver Tabuleiro Completo</button>}
+      <Suspense fallback={<div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-background/95 p-4"><p role="status" className="font-display">Carregando…</p><Button variant="outline" onClick={() => { setMap(false); setInspect(null); setTrade(null); }}>Fechar</Button></div>}>
       {map && <MiniMap state={state} onClose={() => setMap(false)} />}
       {inspect !== null && <PropertyDetails state={state} square={inspect} onClose={() => setInspect(null)} />}
 
@@ -357,6 +361,7 @@ function Wallet() {
       {trade && state.phase === "playing" && (
         <TradeTable state={state} pid={pid} initialTo={trade.to} initialGive={trade.give} onClose={() => setTrade(null)} onSend={(p) => { act("trade", p); setTrade(null); }} />
       )}
+      </Suspense>
       {state.phase === "playing" && !me.out && <ReactionBar onReact={(emoji) => { navigator.vibrate?.(15); act("react", { emoji }); }} />}
     </main>
   );

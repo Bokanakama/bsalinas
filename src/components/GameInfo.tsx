@@ -6,11 +6,13 @@ import { RELIC_NAMES } from "@/lib/selva";
 /** Gazeta da Cidade: the active city news stays visible until it expires. */
 export function Gazette({ state, className = "" }: { state: GameState; className?: string }) {
   const [now, setNow] = useState(0);
+  const expiry = state.cityEvent?.expiresAt;
   useEffect(() => {
+    if (expiry === undefined) return;
     setNow(Date.now());
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [expiry]);
   const ev = activeCityEvent(state, now || Date.now());
   if (!ev) return null;
   const left = Math.max(0, Math.ceil(((ev.expiresAt ?? now + 120_000) - now) / 1000));
